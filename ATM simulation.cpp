@@ -28,11 +28,24 @@ int main() {
 					int amount;
 					cin >> amount;
 					
-					int pin;
-					cout << "Enter PIN\n";
-					cin >> pin;
+					if (amount < account_balance) {
+						int pin;
+						cout << "Enter PIN\n";
+						cin >> pin;
 					
-					cout << "You have withdrew " << amount << endl;
+						cout << "You have withdrew " << amount << endl;
+						
+						int remaining_balance;
+						remaining_balance = account_balance - amount;
+						
+						cout << "The remaining balance is " << remaining_balance << endl;
+						
+					} 	else {
+						
+						cout << "The amount entered is greater than the balance\n";
+						
+					}
+					
 					break;
 					
 				case 2:
@@ -59,11 +72,22 @@ int main() {
 					int kiasi;
 					cin >> kiasi;
 					
-					int pin;
-					cout << "Ingiza PIN\n";
-					cin >> pin;
+					if (kiasi < kiasi_kilichopo) {
+						int pin;
+						cout << "Ingiza PIN\n";
+						cin >> pin;
+							
+						cout << "Umetoa shilingi " << kiasi << endl;
+						
+						int kiasi_kilichobaki;
+						kiasi_kilichobaki = kiasi_kilichopo - kiasi;
+						
+						cout << "Kiasi kilichobaki ni shilingi " << kiasi_kilichobaki << endl;
+												
+					}	else {
+						cout << "Kiasi unachotoa ni kikubwa kuliko kiasi kilichopo\n";
+					}
 					
-					cout << "Umetoa shilingi " << kiasi << endl;
 					break;
 					
 				case 2:
