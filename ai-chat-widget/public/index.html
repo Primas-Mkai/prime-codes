@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Daily Grind Coffee Shop</title>
+
+<!-- All styling lives in one file for now - the page's own look, and the
+     chat widget's look, so it's easy to see everything in one place while
+     we're learning. -->
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  
+<header>
+  <div class="logo">☕ The Daily Grind</div>
+  <nav>
+    <a href="#menu">Menu</a>
+    <a href="#about">About</a>
+    <a href="#visit">Visit</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <h1>Good coffee, good people, good mornings.</h1>
+  <p>A neighborhood coffee shop serving single-origin pour-overs, fresh pastries, and a place to slow down.</p>
+</div>
+
+<section id="menu">
+  <h2>Menu Highlights</h2>
+  <ul class="menu-list">
+    <li><span>Pour-over coffee</span><span>$4.50</span></li>
+    <li><span>Cappuccino</span><span>$4.00</span></li>
+    <li><span>Cold brew</span><span>$4.75</span></li>
+    <li><span>Croissant</span><span>$3.25</span></li>
+    <li><span>Avocado toast</span><span>$7.50</span></li>
+  </ul>
+</section>
+
+<section id="about">
+  <h2>About Us</h2>
+  <p>We're a small, community-focused coffee shop with free wifi, a cozy reading corner, and a rotating menu of vegan pastries. We also host small private events - ask us about our space.</p>
+</section>
+
+<section id="visit">
+  <h2>Visit</h2>
+  <p><strong>Address:</strong> 142 Market Street, Springfield</p>
+  <p><strong>Hours:</strong> Mon&ndash;Fri 7am&ndash;6pm, Sat 8am&ndash;5pm, Sun 8am&ndash;2pm</p>
+  <p><strong>Phone:</strong> (555) 123-4567</p>
+</section>
+
+<footer>
+  &copy; 2026 The Daily Grind Coffee Shop
+</footer>
+
+<!-- ===================== CHAT WIDGET MARKUP =====================
+     This is the actual HTML for the widget: a launcher button, and a
+     panel that's hidden until it's opened. JS (script.js) is what makes
+     it functional - toggling classes, reading input, adding messages. -->
+<div id="chat-widget">
+  <button id="chat-launcher" aria-label="Open chat">💬</button>
+
+  <div id="chat-panel">
+    <div id="chat-header">
+      <span>The Daily Grind</span>
+      <button id="chat-close" aria-label="Close chat">✕</button>
+    </div>
+
+    <div id="chat-messages">
+      <!-- Messages get added here by script.js as the conversation happens -->
+    </div>
+
+    <form id="chat-form">
+      <input id="chat-input" type="text" placeholder="Type a message..." autocomplete="off" maxlength="500" />
+      <button type="submit">Send</button>
+    </form>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
