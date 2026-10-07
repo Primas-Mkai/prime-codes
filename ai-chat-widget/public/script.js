@@ -35,7 +35,7 @@ launcher.addEventListener("click", () => {
     input.focus();
     if (!hasGreeted) {
       hasGreeted = true;
-      addMessage("bot", "Hi! I'm the assistant for The Daily Grind. (Not connected to real AI yet - that's next!)");
+      addMessage("bot", "Hi! I'm the assistant for The Daily Grind. Ask me about our hours, menu, or location!");
     }
   }
 });
