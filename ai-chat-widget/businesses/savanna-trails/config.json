@@ -1,0 +1,13 @@
+{
+  "name": "Savanna Trails Tanzania",
+  "greeting": "Jambo! I'm the Savanna Trails assistant. Ask me about tours, prices or planning your trip.",
+  "fallbackContact": "message us on WhatsApp at +255 700 000 000 or use the enquiry form on the website",
+  "assistantName": "Savanna Trails assistant",
+  "buttonLabel": "Ask us anything",
+  "theme": {
+    "primary": "#1F4A3A",
+    "accent": "#C9A15A",
+    "primaryText": "#FFFFFF",
+    "accentText": "#1C1B19"
+  }
+}

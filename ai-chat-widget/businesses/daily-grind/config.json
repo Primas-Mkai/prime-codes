@@ -1,0 +1,13 @@
+{
+  "name": "The Daily Grind",
+  "greeting": "Hi! I'm the assistant for The Daily Grind. Ask me about our hours, menu, or location!",
+  "fallbackContact": "call us at (555) 123-4567",
+  "assistantName": "The Daily Grind assistant",
+  "buttonLabel": "Ask us anything",
+  "theme": {
+    "primary": "#6B4226",
+    "accent": "#E3C9AE",
+    "primaryText": "#FFFFFF",
+    "accentText": "#2B2B2B"
+  }
+}
