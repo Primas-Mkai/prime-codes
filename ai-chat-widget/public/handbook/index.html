@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mwangaza Academy: Parent Handbook assistant (demo)</title>
+<meta name="description" content="Demo: ask questions about a fictional school's parent handbook and see the exact sentence each answer comes from.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div>
+      <p class="school-name">Mwangaza Academy</p>
+      <p class="doc-title" id="doc-title">Parent Handbook 2026</p>
+    </div>
+    <span class="badge">Demo</span>
+  </div>
+</header>
+
+<main class="wrap layout">
+  <section class="ask-panel" aria-labelledby="ask-heading">
+    <h1 id="ask-heading">Ask the handbook</h1>
+
+    <form id="ask-form" class="ask-form" autocomplete="off">
+      <label class="sr-only" for="question">Your question</label>
+      <input id="question" class="question-input" type="text" maxlength="500" aria-label="Your question"
+             placeholder="e.g. What is the late fee if I pay after the due date?">
+      <button id="ask-button" class="btn btn-primary" type="submit">Ask</button>
+    </form>
+    <p id="counter" class="counter" hidden></p>
+
+    <div id="chips" class="chips" aria-label="Example questions"></div>
+
+    <div id="answer" class="answer-area" aria-live="polite">
+      <p class="empty-state">Ask a question and the answer will appear here, together with the exact sentence in the handbook it comes from.</p>
+    </div>
+  </section>
+
+  <section class="handbook-panel" aria-label="The handbook">
+    <details id="handbook-details" class="handbook-details">
+      <summary>Read the full handbook</summary>
+      <div id="viewer" class="viewer" tabindex="0" aria-label="Handbook text">
+        <p class="muted">Loading the handbook...</p>
+      </div>
+    </details>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Built by Primas Mkai &middot; <a href="https://github.com/Primas-Mkai/prime-codes" target="_blank" rel="noopener noreferrer">GitHub</a></p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

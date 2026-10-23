@@ -1,0 +1,107 @@
+/* Mwangaza Academy handbook assistant (demo page). Colours come from /api/config via CSS variables. */
+:root {
+  --primary: #1F3A5F;
+  --accent: #E0A526;
+  --primary-text: #FFFFFF;
+  --accent-text: #1C1B19;
+  --page: #F7F6F2;
+  --card: #FFFFFF;
+  --border: #E1DED5;
+  --ink: #1C1B19;
+  --muted: #5B5850;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.6 var(--font); overflow-wrap: anywhere; }
+h1, h2, h3, p { margin: 0; }
+a { color: var(--primary); }
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.muted { color: var(--muted); }
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* header */
+.site-header { background: var(--primary); color: var(--primary-text); }
+.header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 18px; padding-bottom: 18px; }
+.school-name { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.doc-title { font-size: 15px; opacity: .85; }
+.badge { flex: none; padding: 4px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-text); font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+
+/* layout */
+.layout { display: grid; gap: 24px; padding-top: 24px; padding-bottom: 40px; align-items: start; }
+@media (min-width: 960px) {
+  .layout { grid-template-columns: 42fr 58fr; gap: 32px; padding-top: 32px; }
+}
+
+/* ask panel */
+.ask-panel h1 { font-size: 26px; line-height: 1.25; margin-bottom: 14px; }
+.ask-form { display: flex; gap: 8px; }
+.question-input { flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border: 1px solid #B9B5A9; border-radius: 12px; background: #fff; font: inherit; color: var(--ink); }
+.question-input:focus { outline: 3px solid var(--accent); outline-offset: 1px; border-color: var(--primary); }
+.question-input:disabled { background: #F0EEE8; }
+.btn { min-height: 48px; padding: 0 20px; border: 1px solid transparent; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; }
+.btn-primary { background: var(--primary); color: var(--primary-text); }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn:disabled { opacity: .55; cursor: default; }
+.counter { margin-top: 6px; font-size: 14px; color: var(--muted); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip { min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--primary); font: inherit; font-size: 15px; text-align: left; cursor: pointer; }
+.chip:hover { border-color: var(--primary); }
+.chip:disabled { opacity: .55; cursor: default; }
+
+/* answers */
+.answer-area { margin-top: 20px; }
+.empty-state { color: var(--muted); padding: 16px; border: 1px dashed #C9C5B8; border-radius: 12px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.card .question { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.card .label { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.card .answer-text { font-size: 18px; line-height: 1.55; }
+.card-neutral { background: #F3F2EC; }
+.card-warning { background: #FBF3DD; border-color: #E6CF8B; }
+.card-error { background: #FDECEA; border-color: #EFC2BC; color: #7A1D10; }
+.source { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.source .label { text-transform: none; letter-spacing: 0; font-size: 14px; }
+.source blockquote { margin: 0 0 12px; padding: 8px 12px; border-left: 4px solid var(--accent); background: #FAF8F2; color: #3A3832; font-size: 15px; }
+.btn-link { min-height: 44px; padding: 0 14px; border: 1px solid var(--primary); border-radius: 12px; background: transparent; color: var(--primary); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.btn-link:hover { background: var(--primary); color: var(--primary-text); }
+
+.waiting { display: flex; align-items: center; gap: 10px; padding: 16px; color: var(--muted); }
+.waiting .dots { display: inline-flex; gap: 4px; }
+.waiting .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); opacity: .35; }
+@media (prefers-reduced-motion: no-preference) {
+  .waiting .dots i { animation: blink 1.2s infinite both; }
+  .waiting .dots i:nth-child(2) { animation-delay: .2s; }
+  .waiting .dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+}
+
+/* handbook viewer */
+.handbook-details { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.handbook-details summary { min-height: 48px; padding: 12px 16px; cursor: pointer; font-weight: 600; color: var(--primary); }
+.viewer { padding: 4px 18px 18px; max-height: 70vh; overflow-y: auto; position: relative; }
+.viewer h1 { font-size: 24px; line-height: 1.25; margin: 14px 0 8px; }
+.viewer h2 { font-size: 20px; line-height: 1.3; margin: 26px 0 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.viewer h3 { font-size: 17px; line-height: 1.35; margin: 18px 0 6px; }
+.viewer p { margin: 8px 0; }
+.viewer ul { margin: 8px 0; padding-left: 22px; }
+.viewer li { margin: 4px 0; }
+.table-wrap { overflow-x: auto; margin: 10px 0; }
+.viewer table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.viewer th, .viewer td { text-align: left; vertical-align: top; padding: 8px 10px; border: 1px solid var(--border); }
+.viewer th { background: #F3F2EC; }
+mark { background: #FBE7A8; background: color-mix(in srgb, var(--accent) 38%, white); color: var(--ink); padding: 0 2px; border-radius: 3px; }
+tr.hl-row td, tr.hl-row th { background: #FBE7A8; background: color-mix(in srgb, var(--accent) 38%, white); }
+
+@media (min-width: 960px) {
+  .handbook-panel { position: sticky; top: 16px; }
+  .handbook-details summary { display: none; }
+  .viewer { max-height: 80vh; padding-top: 14px; }
+}
+
+/* footer */
+.site-footer { border-top: 1px solid var(--border); padding: 20px 0 28px; font-size: 14px; color: var(--muted); }
+.site-footer a { display: inline-block; padding: 8px 4px; }

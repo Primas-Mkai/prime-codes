@@ -73,8 +73,118 @@ function loadBusinesses() {
     const info = fs.readFileSync(infoPath, "utf8");
     if (!info.trim()) throw new Error(`Business folder "${id}" has an empty info.txt`);
     loaded[id] = { info, config: JSON.parse(fs.readFileSync(configPath, "utf8")) };
+    // "document" businesses also load document.txt (a missing mode means a normal "chat" business).
+    if (loaded[id].config.mode === "document") loaded[id].doc = loadDocument(id);
   }
   return loaded;
+}
+
+// --- document mode: the handbook text, its headings and a normalised copy for matching ---
+const MAX_DOCUMENT_BYTES = 200 * 1024;
+const HEADING_RE = /^#{1,3}\s+(\d+(?:\.\d+)?\.?\s+.+)$/;
+const MIN_QUOTE_CHARS = 8; // a tiny "quote" would match almost anywhere
+const MAX_QUOTE_CHARS = 400; // the model is told 300; allow some slack for normalisation
+
+// Lower-case, straighten curly quotes, drop markdown characters (* _ ` # |) and leading "- "
+// list markers, and collapse all whitespace to single spaces. Returns the normalised text and,
+// for every normalised character, the index of the original character it came from.
+function normaliseWithMap(text) {
+  let out = "";
+  const map = [];
+  let atLineStart = true;
+  for (let i = 0; i < text.length; i++) {
+    let c = text[i];
+    if (c === "\n") {
+      atLineStart = true;
+    } else if (!/\s/.test(c)) {
+      if (atLineStart && c === "-" && /\s/.test(text[i + 1] || "")) continue; // "- " list marker
+      atLineStart = false;
+    }
+    if ("*_`#|".includes(c)) continue;
+    if (c === "\u2018" || c === "\u2019" || c === "\u201B") c = "'";
+    else if (c === "\u201C" || c === "\u201D") c = '"';
+    if (/\s/.test(c)) {
+      if (out === "" || out[out.length - 1] === " ") continue;
+      out += " ";
+      map.push(i);
+      continue;
+    }
+    for (const lower of c.toLowerCase()) {
+      out += lower;
+      map.push(i);
+    }
+  }
+  if (out.endsWith(" ")) {
+    out = out.slice(0, -1);
+    map.pop();
+  }
+  return { text: out, map };
+}
+
+function normalise(text) {
+  return normaliseWithMap(String(text)).text;
+}
+
+function loadDocument(id) {
+  const docPath = path.join(BUSINESSES_DIR, id, "document.txt");
+  try {
+    if (!fs.existsSync(docPath)) {
+      console.warn(`Warning: business "${id}" is in document mode but has no document.txt; /api/ask-document is unavailable for it.`);
+      return null;
+    }
+    if (fs.statSync(docPath).size > MAX_DOCUMENT_BYTES) {
+      console.warn(`Warning: document.txt of "${id}" is larger than ${MAX_DOCUMENT_BYTES / 1024} KB and was not loaded.`);
+      return null;
+    }
+    const text = fs.readFileSync(docPath, "utf8").replace(/\r\n/g, "\n");
+    if (!text.trim()) {
+      console.warn(`Warning: document.txt of "${id}" is empty and was not loaded.`);
+      return null;
+    }
+    const headings = [];
+    let offset = 0;
+    for (const line of text.split("\n")) {
+      const m = HEADING_RE.exec(line);
+      if (m) headings.push({ offset, text: m[1].trim() });
+      offset += line.length + 1;
+    }
+    return { text, headings, norm: normaliseWithMap(text) };
+  } catch (err) {
+    console.warn(`Warning: could not load document.txt of "${id}": ${err.message}`);
+    return null;
+  }
+}
+
+// Display-only tidy-up of a verified quote: no markdown, table rows shown as "cell \u00B7 cell".
+function cleanQuote(raw) {
+  let text = raw.replace(/[*_`]/g, "").replace(/^[ \t]*(?:-[ \t]+|#+[ \t]*)/gm, "");
+  if (text.includes("|")) {
+    text = text
+      .split("|")
+      .map((cell) => cell.replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .join(" \u00B7 ");
+  }
+  return text.replace(/\s+/g, " ").trim();
+}
+
+// Checks that the quote really exists in the document. Returns { section, quote } (the quote as
+// written in the ORIGINAL document, and the nearest heading before it), or null if not found.
+function verifyQuote(business, quote) {
+  const doc = business && business.doc;
+  if (!doc || typeof quote !== "string") return null;
+  const q = normalise(quote);
+  if (q.length < MIN_QUOTE_CHARS || q.length > MAX_QUOTE_CHARS) return null;
+  const at = doc.norm.text.indexOf(q);
+  if (at === -1) return null;
+  const start = doc.norm.map[at];
+  const end = doc.norm.map[at + q.length - 1] + 1;
+  let section = "";
+  for (const h of doc.headings) {
+    if (h.offset <= start) section = h.text;
+    else break;
+  }
+  return { section, quote: cleanQuote(doc.text.slice(start, end)) };
 }
 
 let BUSINESSES;
@@ -107,7 +217,8 @@ function serveStaticFile(req, res) {
     return;
   }
 
-  const requested = pathname === "/" ? "index.html" : pathname.slice(1);
+  // A path ending in "/" means that folder's index.html ("/" itself is public/index.html).
+  const requested = pathname.endsWith("/") ? pathname.slice(1) + "index.html" : pathname.slice(1);
   const filePath = path.join(PUBLIC_DIR, requested);
 
   // Security: refuse anything that resolves outside the public folder
@@ -116,6 +227,22 @@ function serveStaticFile(req, res) {
     res.writeHead(403);
     res.end("Forbidden");
     return;
+  }
+
+  // A folder without the trailing slash (e.g. "/handbook"): redirect so relative links work.
+  if (!pathname.endsWith("/")) {
+    let stat;
+    try {
+      stat = fs.statSync(filePath);
+    } catch (err) {
+      stat = null;
+    }
+    if (stat && stat.isDirectory()) {
+      const url = new URL(req.url, "http://localhost");
+      res.writeHead(301, { Location: url.pathname + "/" + url.search });
+      res.end();
+      return;
+    }
   }
 
   fs.readFile(filePath, (err, data) => {
@@ -134,7 +261,8 @@ function serveStaticFile(req, res) {
 }
 
 // --- calling Gemini, with fallback ------------------------------------------
-async function askGemini(messages) {
+// options (all optional): temperature, jsonMode (ask for a JSON object), meta (receives { model }).
+async function askGemini(messages, options = {}) {
   const startedAt = Date.now();
   const timeLeft = () => AI_TOTAL_TIMEOUT_MS - (Date.now() - startedAt);
   let lastError;
@@ -150,7 +278,12 @@ async function askGemini(messages) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${process.env.GEMINI_API_KEY}`,
           },
-          body: JSON.stringify({ model, messages }),
+          body: JSON.stringify({
+            model,
+            messages,
+            ...(options.temperature !== undefined && { temperature: options.temperature }),
+            ...(options.jsonMode && { response_format: { type: "json_object" } }),
+          }),
           signal: AbortSignal.timeout(Math.min(AI_ATTEMPT_TIMEOUT_MS, timeLeft())),
         });
         data = await response.json();
@@ -163,6 +296,7 @@ async function askGemini(messages) {
 
       if (response.ok) {
         if (model !== MODELS[0]) console.log(`Fallback model used: ${model}`);
+        if (options.meta) options.meta.model = model;
         return data.choices[0].message.content;
       }
 
@@ -296,6 +430,15 @@ function handleChat(req, res, corsHeaders) {
     if (!Object.prototype.hasOwnProperty.call(BUSINESSES, businessId)) {
       return sendJson(res, 400, { error: "Unknown business." }, corsHeaders);
     }
+    // Document businesses are answered by /api/ask-document, never by plain chat.
+    if (BUSINESSES[businessId].config.mode === "document") {
+      return sendJson(
+        res,
+        400,
+        { error: "This assistant answers from a document. Please use the document question box." },
+        corsHeaders
+      );
+    }
 
     // Only accept well-formed user/assistant turns, and keep just the most recent ones.
     // (Never trust the browser to send safe data - it could send anything, including a fake "system" message.)
@@ -330,6 +473,124 @@ function handleChat(req, res, corsHeaders) {
   });
 }
 
+// --- POST /api/ask-document: answer from the business's document, with a verified quote ---
+// Tests can replace hooks.askGemini with a fake; nothing in production touches it.
+const hooks = { askGemini };
+
+// Tolerant parsing: strip ``` fences if present, then JSON.parse. Returns a valid object or null.
+function parseModelAnswer(raw) {
+  if (typeof raw !== "string") return null;
+  const text = raw.trim().replace(/^```[a-zA-Z]*\s*/, "").replace(/\s*```$/, "").trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || typeof parsed.found !== "boolean") return null;
+  if (typeof parsed.answer !== "string" || !parsed.answer.trim()) return null;
+  if (parsed.found && typeof parsed.quote !== "string") return null;
+  return { found: parsed.found, answer: parsed.answer.trim().slice(0, 1500), quote: parsed.quote || "" };
+}
+
+// Asks the model (at most twice) and returns the response object for the visitor.
+async function answerFromDocument(business, question, meta) {
+  const messages = [
+    { role: "system", content: `${business.info}\n\nDOCUMENT START\n${business.doc.text}\nDOCUMENT END` },
+    { role: "user", content: question },
+  ];
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const parsed = parseModelAnswer(
+      await hooks.askGemini(messages, { temperature: 0.1, jsonMode: true, meta })
+    );
+    if (!parsed) continue; // unreadable reply: counts as a failed attempt
+    if (!parsed.found) return { found: false, answer: parsed.answer, source: null };
+    const verified = verifyQuote(business, parsed.quote);
+    if (verified) return { found: true, answer: parsed.answer, source: verified };
+  }
+  const contact = business.config.fallbackContact || "contact the business directly";
+  return {
+    found: false,
+    answer: `I could not confirm that from the handbook, so I would rather not guess. Please ${contact}.`,
+    source: null,
+    verified: false,
+  };
+}
+
+function handleAskDocument(req, res, corsHeaders) {
+  const retryAfter = checkRateLimit(clientIp(req));
+  if (retryAfter) {
+    req.resume();
+    return sendJson(
+      res,
+      429,
+      { error: "Too many messages right now. Please wait a few minutes and try again." },
+      { ...corsHeaders, "Retry-After": String(retryAfter) }
+    );
+  }
+
+  let body = "";
+  let tooLarge = false;
+  req.on("data", (chunk) => {
+    if (tooLarge) return;
+    body += chunk;
+    if (body.length > MAX_BODY_BYTES) {
+      tooLarge = true;
+      body = "";
+      res.on("finish", () => req.destroy());
+      sendJson(res, 413, { error: "Request too large." }, { ...corsHeaders, Connection: "close" });
+    }
+  });
+
+  req.on("end", async () => {
+    if (tooLarge) return;
+
+    let businessId, question;
+    try {
+      const parsed = JSON.parse(body);
+      businessId = typeof parsed.business === "string" && parsed.business ? parsed.business : DEFAULT_BUSINESS;
+      question = parsed.question;
+    } catch (err) {
+      return sendJson(res, 400, { error: "Invalid request body" }, corsHeaders);
+    }
+    // The id is only ever used as a key into the in-memory object, never to build a path.
+    if (!Object.prototype.hasOwnProperty.call(BUSINESSES, businessId)) {
+      return sendJson(res, 400, { error: "Unknown business." }, corsHeaders);
+    }
+    const business = BUSINESSES[businessId];
+    if (business.config.mode !== "document" || !business.doc) {
+      return sendJson(res, 400, { error: "This assistant does not answer questions from a document." }, corsHeaders);
+    }
+    if (typeof question !== "string" || !question.trim()) {
+      return sendJson(res, 400, { error: "Please type a question." }, corsHeaders);
+    }
+    question = question.trim();
+    if (question.length > MAX_MESSAGE_LENGTH) {
+      return sendJson(res, 400, { error: `Question too long (max ${MAX_MESSAGE_LENGTH} characters)` }, corsHeaders);
+    }
+
+    const startedAt = Date.now();
+    const meta = {};
+    try {
+      const result = await answerFromDocument(business, question, meta);
+      // Log only the business id, outcome, model and timing (never the question or the document).
+      console.log(
+        `ask-document business=${businessId} found=${result.found} verified=${result.verified !== false} model=${meta.model || "-"} ms=${Date.now() - startedAt}`
+      );
+      sendJson(res, 200, result, corsHeaders);
+    } catch (err) {
+      console.error(`ask-document business=${businessId} failed: ${err.message} ms=${Date.now() - startedAt}`);
+      const contact = business.config.fallbackContact || "contact the business directly";
+      sendJson(
+        res,
+        502,
+        { error: `The assistant is busy right now. Please try again in a moment, or ${contact}.` },
+        corsHeaders
+      );
+    }
+  });
+}
+
 // --- GET /api/config: the public, whitelisted settings the widget needs ----------
 const DEFAULT_THEME = { primary: "#1F4A3A", accent: "#C9A15A", primaryText: "#FFFFFF", accentText: "#1C1B19" };
 
@@ -345,7 +606,7 @@ function safeText(value, max, fallback) {
 function buildPublicConfig(config) {
   const name = safeText(config.name, 80, "Assistant");
   const theme = config.theme && typeof config.theme === "object" ? config.theme : {};
-  return {
+  const publicConfig = {
     name,
     assistantName: safeText(config.assistantName, 80, name + " assistant"),
     greeting: safeText(config.greeting, 300, ""),
@@ -357,6 +618,15 @@ function buildPublicConfig(config) {
       accentText: safeColor(theme.accentText, DEFAULT_THEME.accentText),
     },
   };
+  if (config.mode === "document") {
+    publicConfig.mode = "document";
+    publicConfig.documentTitle = safeText(config.documentTitle, 80, "");
+    publicConfig.exampleQuestions = (Array.isArray(config.exampleQuestions) ? config.exampleQuestions : [])
+      .filter((q) => typeof q === "string" && q.trim())
+      .slice(0, 5)
+      .map((q) => q.slice(0, 120));
+  }
+  return publicConfig;
 }
 
 function handleConfig(req, res) {
@@ -378,9 +648,34 @@ function handleConfig(req, res) {
   sendJson(res, 200, buildPublicConfig(BUSINESSES[businessId].config), headers);
 }
 
+// --- GET /api/document: the full text of a document business, for the page's handbook viewer ---
+function handleDocument(req, res) {
+  const corsHeaders = checkOrigin(req);
+  if (!corsHeaders) return sendJson(res, 403, { error: "Origin not allowed." });
+
+  const requestedId = new URL(req.url, "http://localhost").searchParams.get("business");
+  const businessId = requestedId ? requestedId : DEFAULT_BUSINESS;
+  // The id is only ever used as a key into the in-memory object, never to build a path.
+  if (!Object.prototype.hasOwnProperty.call(BUSINESSES, businessId)) {
+    return sendJson(res, 404, { error: "Unknown business." });
+  }
+  const business = BUSINESSES[businessId];
+  if (business.config.mode !== "document" || !business.doc) {
+    return sendJson(res, 404, { error: "No document for this business." });
+  }
+
+  const headers = { "Cache-Control": "public, max-age=300" };
+  if (corsHeaders["Access-Control-Allow-Origin"]) {
+    headers["Access-Control-Allow-Origin"] = corsHeaders["Access-Control-Allow-Origin"];
+    headers.Vary = "Origin";
+  }
+  sendJson(res, 200, { title: safeText(business.config.documentTitle, 80, ""), text: business.doc.text }, headers);
+}
+
 const server = http.createServer((req, res) => {
   const pathname = req.url.split("?")[0];
-  if (pathname === "/api/chat" && (req.method === "POST" || req.method === "OPTIONS")) {
+  const isAskRoute = pathname === "/api/ask-document";
+  if ((pathname === "/api/chat" || isAskRoute) && (req.method === "POST" || req.method === "OPTIONS")) {
     const corsHeaders = checkOrigin(req);
     if (!corsHeaders) {
       req.resume();
@@ -391,11 +686,15 @@ const server = http.createServer((req, res) => {
       res.end();
       return;
     }
-    handleChat(req, res, corsHeaders);
+    (isAskRoute ? handleAskDocument : handleChat)(req, res, corsHeaders);
     return;
   }
   if (req.method === "GET" && pathname === "/api/config") {
     handleConfig(req, res);
+    return;
+  }
+  if (req.method === "GET" && pathname === "/api/document") {
+    handleDocument(req, res);
     return;
   }
   if (req.method === "GET") {
@@ -406,6 +705,11 @@ const server = http.createServer((req, res) => {
   res.end("Method not allowed");
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+// Started normally with "node server.js"; test-document.js requires this file instead.
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = { server, normalise, normaliseWithMap, verifyQuote, hooks, BUSINESSES };
