@@ -98,7 +98,7 @@ async function main() {
     check(`${width}: no horizontal scroll`, await evalJs(`document.documentElement.scrollWidth <= document.documentElement.clientWidth`), await evalJs(`[document.documentElement.scrollWidth, document.documentElement.clientWidth]`));
     check(`${width}: handbook ${width >= 960 ? "open beside the form" : "folded in a closed <details>"}`,
       await evalJs(`document.getElementById("handbook-details").open === ${width >= 960}`), null);
-    check(`${width}: page title`, (await evalJs(`document.title`)) === "Mwangaza Academy: Parent Handbook assistant (demo)", null);
+    check(`${width}: page title`, (await evalJs(`document.title`)) === "Menos Academy: Parent Handbook assistant (demo)", null);
 
     // chip -> verified answer card with Source block and a <mark> in the handbook
     await evalJs(`document.querySelectorAll(".chip")[0].click(); true`);

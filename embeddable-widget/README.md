@@ -1,4 +1,4 @@
-# Savanna Trails Tanzania — demo website
+# Menos Trails — demo website
 
 A fictional business site built for portfolio purposes. Plain HTML, CSS and JS; no build step. Open `index.html` in a browser.
 
@@ -17,6 +17,9 @@ Then delete the `.ph-label` span. For the hero, the `.hero-overlay` keeps the te
 ## Chat assistant
 
 The chat is the embeddable widget from the `ai-chat-widget` project, loaded by the last lines of `index.html`:
-`<script src="http://localhost:3000/widget.js" data-business="savanna-trails" defer></script>` (`data-business` picks the business; for the live site use `https://prime-codes.onrender.com/widget.js`).
-Open the page through a web address allowed by the server's `ALLOWED_ORIGINS` (for example `http://localhost:5500`), not a `file://` address.
-The server must be running on port 3000, otherwise the chat will not appear or reply.
+`<script src="https://prime-codes.onrender.com/widget.js" data-business="menos-trails" defer></script>` (`data-business` picks the business).
+The page must be opened through a web address allowed by the server's `ALLOWED_ORIGINS`, not a `file://` address.
+
+## Testing locally
+
+To test with a local server, temporarily change the `src` to `http://localhost:3000/widget.js` (server running on port 3000, page opened from an allowed origin such as `http://localhost:5500`) and change it back before pushing.

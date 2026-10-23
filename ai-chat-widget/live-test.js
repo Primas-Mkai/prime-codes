@@ -16,7 +16,7 @@ const QUESTIONS = [
       const r = await fetch(BASE + "/api/ask-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ business: "mwangaza-academy", question: QUESTIONS[i] }),
+        body: JSON.stringify({ business: "menos-academy", question: QUESTIONS[i] }),
         signal: AbortSignal.timeout(70000),
       });
       const d = await r.json();

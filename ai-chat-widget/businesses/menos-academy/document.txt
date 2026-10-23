@@ -1,14 +1,14 @@
-# Mwangaza Academy
+# Menos Academy
 
-Parent Handbook 2026
+Parent Handbook 2027
 
 Private primary school, Dar es Salaam, Tanzania
 
-Demo document: Mwangaza Academy is a fictional school created for portfolio purposes. All names, fees, dates and contact details are invented.
+Demo document: Menos Academy is a fictional school created for portfolio purposes. All names, fees, dates and contact details are invented.
 
 ## 1. About the school
 
-Mwangaza Academy is a private English-medium primary school in Dar es Salaam. We teach children from Nursery (age 4) to Standard 7. Each class has a maximum of 28 pupils and a class teacher, supported by a teaching assistant in Nursery to Standard 2. Swahili is taught as a subject every day, and English is the language of instruction for all other subjects.
+Menos Academy is a private English-medium primary school in Dar es Salaam. We teach children from Nursery (age 4) to Standard 7. Each class has a maximum of 28 pupils and a class teacher, supported by a teaching assistant in Nursery to Standard 2. Swahili is taught as a subject every day, and English is the language of instruction for all other subjects.
 
 The Head Teacher is Mrs. Neema Kileo. The school is led by a small management team made up of the Head Teacher, the Academic Coordinator and the Accounts Officer. This handbook explains how the school works day to day. If something changes during the year, parents will be told in writing through the class group on WhatsApp and by email.
 
@@ -137,7 +137,7 @@ Bullying, fighting, theft, bringing dangerous items to school and leaving the sc
 
 ## 8. School transport
 
-Mwangaza Academy runs a school bus service on three routes in Dar es Salaam. Places on the buses are limited and are given in the order that applications are received. Parents who want a place must apply to the transport office before the start of the term. The transport office confirms the route, the pick-up stops and the price for each term in a letter. Buses are accompanied by a school attendant, and every child must wear a seat belt.
+Menos Academy runs a school bus service on three routes in Dar es Salaam. Places on the buses are limited and are given in the order that applications are received. Parents who want a place must apply to the transport office before the start of the term. The transport office confirms the route, the pick-up stops and the price for each term in a letter. Buses are accompanied by a school attendant, and every child must wear a seat belt.
 
 Parents who bring and collect their children by car must use the drop-off lane at the main gate and must not park on the road in front of the school.
 
@@ -153,10 +153,10 @@ Each class has a WhatsApp group for parents, used by the class teacher for notic
 
 | **Who**                                    | **How to reach them**                                                    |
 |--------------------------------------------|--------------------------------------------------------------------------|
-| School office (general questions, absence) | +255 700 000 001, office@mwangaza-demo.example                           |
-| Accounts Officer (fees, invoices)          | accounts@mwangaza-demo.example                                           |
-| Transport office                           | transport@mwangaza-demo.example                                          |
-| Head Teacher, Mrs. Neema Kileo             | headteacher@mwangaza-demo.example                                        |
+| School office (general questions, absence) | +255 700 000 001, office@menos-demo.example                              |
+| Accounts Officer (fees, invoices)          | accounts@menos-demo.example                                              |
+| Transport office                           | transport@menos-demo.example                                             |
+| Head Teacher, Mrs. Neema Kileo             | headteacher@menos-demo.example                                           |
 | Office hours                               | Monday to Friday, 7:30 to 16:00. Closed on weekends and public holidays. |
 | Address                                    | Plot 00, Example Road, Mikocheni, Dar es Salaam                          |
 

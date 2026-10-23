@@ -1,7 +1,7 @@
 {
-  "name": "Mwangaza Academy",
-  "assistantName": "Mwangaza handbook assistant",
-  "greeting": "Karibu! Ask me anything about the Mwangaza Academy parent handbook: fees, term dates, uniform, pickup and more.",
+  "name": "Menos Academy",
+  "assistantName": "Menos handbook assistant",
+  "greeting": "Karibu! Ask me anything about the Menos Academy parent handbook: fees, term dates, uniform, pickup and more.",
   "buttonLabel": "Ask the handbook",
   "mode": "document",
   "documentTitle": "Parent Handbook 2026",
@@ -10,6 +10,6 @@
     "What happens if I collect my child at 17:30?",
     "What discount do I get for three children?"
   ],
-  "fallbackContact": "call the school office on +255 700 000 001 or email office@mwangaza-demo.example",
+  "fallbackContact": "call the school office on +255 700 000 001 or email office@menos-demo.example",
   "theme": { "primary": "#1F3A5F", "accent": "#E0A526", "primaryText": "#FFFFFF", "accentText": "#1C1B19" }
 }

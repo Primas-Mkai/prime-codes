@@ -1,9 +1,9 @@
-// Mwangaza Academy handbook assistant (demo page).
+// Menos Academy handbook assistant (demo page).
 // Everything from the server or the model is inserted with textContent / createElement, never innerHTML.
 (function () {
   "use strict";
 
-  var BUSINESS = "mwangaza-academy";
+  var BUSINESS = "menos-academy";
   var COLOR_RE = /^#[0-9a-fA-F]{6}$/;
   var WIDE = window.matchMedia("(min-width: 960px)");
   var REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");

@@ -50,14 +50,14 @@ function request(method, path, body, headers = {}) {
 }
 let ipCounter = 0;
 const freshIp = () => ({ "X-Forwarded-For": `10.0.0.${++ipCounter}` }); // each test gets its own rate-limit bucket
-const ask = (question, extra = {}) => request("POST", "/api/ask-document", { business: "mwangaza-academy", question, ...extra }, freshIp());
+const ask = (question, extra = {}) => request("POST", "/api/ask-document", { business: "menos-academy", question, ...extra }, freshIp());
 
 async function main() {
   if (!LIVE) await startFakeGemini();
   const app = require("./server.js");
   await new Promise((r) => app.server.listen(0, "127.0.0.1", r));
   port = app.server.address().port;
-  const biz = app.BUSINESSES["mwangaza-academy"];
+  const biz = app.BUSINESSES["menos-academy"];
 
   // fake model: returns the queued replies in order, remembers what it was asked
   let queue = [];
@@ -133,14 +133,14 @@ async function main() {
     check("route: asked with temperature 0.1 + JSON mode, document in system message, question in user message",
       calls[0].options.temperature === 0.1 && calls[0].options.jsonMode === true &&
       calls[0].messages[0].content.includes("DOCUMENT START") && calls[0].messages[0].content.includes("DOCUMENT END") &&
-      calls[0].messages[0].content.includes("Mwangaza Academy") && calls[0].messages[1].content === "What is the late fee?", calls[0].options);
+      calls[0].messages[0].content.includes("Menos Academy") && calls[0].messages[1].content === "What is the late fee?", calls[0].options);
 
     useFake(reply({ found: true, answer: "Invented.", quote: "The school gives every child a free laptop in January." }),
             reply({ found: true, answer: "Invented again.", quote: "The school gives every child a free laptop in January." }));
     r = await ask("Do I get a laptop?");
     check("d) invented quote twice -> 'could not confirm' message, 2 model calls",
       r.status === 200 && r.json.found === false && r.json.verified === false && r.json.source === null &&
-      r.json.answer === "I could not confirm that from the handbook, so I would rather not guess. Please call the school office on +255 700 000 001 or email office@mwangaza-demo.example." && calls.length === 2, { json: r.json, calls: calls.length });
+      r.json.answer === "I could not confirm that from the handbook, so I would rather not guess. Please call the school office on +255 700 000 001 or email office@menos-demo.example." && calls.length === 2, { json: r.json, calls: calls.length });
 
     useFake(reply({ found: true, answer: "Wrong.", quote: "A made up sentence that is not in the handbook at all." }), reply(good));
     r = await ask("What is the late fee?");
@@ -176,45 +176,45 @@ async function main() {
     check("h) path-like business -> 400 Unknown business.", r.status === 400 && r.json.error === "Unknown business.", r.json);
     r = await ask("   ");
     check("h) empty question -> 400", r.status === 400, r.json);
-    r = await request("POST", "/api/ask-document", { business: "mwangaza-academy" }, freshIp());
+    r = await request("POST", "/api/ask-document", { business: "menos-academy" }, freshIp());
     check("h) missing question -> 400", r.status === 400, r.json);
     r = await ask("x".repeat(501));
     check("h) 501-character question -> 400", r.status === 400, r.json);
-    r = await request("POST", "/api/ask-document", JSON.stringify({ business: "mwangaza-academy", question: "x".repeat(25000) }), freshIp());
+    r = await request("POST", "/api/ask-document", JSON.stringify({ business: "menos-academy", question: "x".repeat(25000) }), freshIp());
     check("h) over-sized body -> 413", r.status === 413, r.status);
     r = await request("POST", "/api/ask-document", "{bad json", freshIp());
     check("h) invalid JSON -> 400", r.status === 400, r.json);
 
     console.log("--- CORS (same check as /api/chat)");
-    r = await request("POST", "/api/ask-document", { business: "mwangaza-academy", question: "" }, { ...freshIp(), Origin: "https://evil.example" });
+    r = await request("POST", "/api/ask-document", { business: "menos-academy", question: "" }, { ...freshIp(), Origin: "https://evil.example" });
     check("CORS: evil origin -> 403, no CORS headers", r.status === 403 && !r.headers["access-control-allow-origin"], r.status);
-    r = await request("POST", "/api/ask-document", { business: "mwangaza-academy", question: "" }, { ...freshIp(), Origin: "http://localhost:5500" });
+    r = await request("POST", "/api/ask-document", { business: "menos-academy", question: "" }, { ...freshIp(), Origin: "http://localhost:5500" });
     check("CORS: allowed origin gets headers", r.headers["access-control-allow-origin"] === "http://localhost:5500" && r.headers.vary === "Origin", r.headers);
     r = await request("OPTIONS", "/api/ask-document", undefined, { Origin: "http://localhost:5500", "Access-Control-Request-Method": "POST" });
     check("CORS: preflight 204", r.status === 204, r.status);
 
     console.log("--- existing routes");
     useFake(reply(good));
-    r = await request("POST", "/api/chat", { business: "mwangaza-academy", message: "hi" }, freshIp());
+    r = await request("POST", "/api/chat", { business: "menos-academy", message: "hi" }, freshIp());
     check("1) /api/chat for a document business -> 400 and NO model call",
       r.status === 400 && r.json.error === "This assistant answers from a document. Please use the document question box." && calls.length === 0, { status: r.status, calls: calls.length });
     app.hooks.askGemini = realAsk;
     r = await request("POST", "/api/chat", { business: "daily-grind", message: "hi" }, freshIp());
     check("i) /api/chat daily-grind still works", r.status === 200 && r.json.reply === "fake chat reply", r.json);
-    r = await request("POST", "/api/chat", { business: "savanna-trails", message: "hi" }, freshIp());
-    check("i) /api/chat savanna-trails still works", r.status === 200 && r.json.reply === "fake chat reply", r.json);
+    r = await request("POST", "/api/chat", { business: "menos-trails", message: "hi" }, freshIp());
+    check("i) /api/chat menos-trails still works", r.status === 200 && r.json.reply === "fake chat reply", r.json);
     const keys = (o) => Object.keys(o).join(",");
     r = await request("GET", "/api/config?business=daily-grind");
     check("i) /api/config daily-grind: same fields as before", keys(r.json) === "name,assistantName,greeting,buttonLabel,theme" && r.json.theme.primary === "#6B4226", r.json);
-    r = await request("GET", "/api/config?business=savanna-trails");
-    check("i) /api/config savanna-trails: same fields as before", keys(r.json) === "name,assistantName,greeting,buttonLabel,theme" && !("fallbackContact" in r.json), r.json);
-    r = await request("GET", "/api/config?business=mwangaza-academy");
-    check("5) /api/config mwangaza: adds mode, documentTitle, exampleQuestions only",
+    r = await request("GET", "/api/config?business=menos-trails");
+    check("i) /api/config menos-trails: same fields as before", keys(r.json) === "name,assistantName,greeting,buttonLabel,theme" && !("fallbackContact" in r.json), r.json);
+    r = await request("GET", "/api/config?business=menos-academy");
+    check("5) /api/config menos: adds mode, documentTitle, exampleQuestions only",
       r.json.mode === "document" && r.json.documentTitle === "Parent Handbook 2026" && r.json.exampleQuestions.length === 3 && !("fallbackContact" in r.json) && r.json.theme.primary === "#1F3A5F", r.json);
 
     console.log("--- GET /api/document");
-    r = await request("GET", "/api/document?business=mwangaza-academy");
-    check("doc: mwangaza -> 200, title and exact text, Cache-Control",
+    r = await request("GET", "/api/document?business=menos-academy");
+    check("doc: menos -> 200, title and exact text, Cache-Control",
       r.status === 200 && r.json.title === "Parent Handbook 2026" && r.json.text === biz.doc.text && /max-age=300/.test(r.headers["cache-control"] || ""), { status: r.status, cc: r.headers["cache-control"] });
     r = await request("GET", "/api/document?business=daily-grind");
     check("doc: daily-grind -> 404 No document", r.status === 404 && r.json.error === "No document for this business.", r.json);
@@ -222,9 +222,9 @@ async function main() {
     check("doc: unknown business -> 404", r.status === 404 && r.json.error === "Unknown business.", r.json);
     r = await request("GET", "/api/document?business=../../.env");
     check("doc: path-like id -> 404", r.status === 404, r.json);
-    r = await request("GET", "/api/document?business=mwangaza-academy", undefined, { Origin: "https://evil.example" });
+    r = await request("GET", "/api/document?business=menos-academy", undefined, { Origin: "https://evil.example" });
     check("doc: evil origin -> 403, no CORS headers", r.status === 403 && !r.headers["access-control-allow-origin"], r.status);
-    r = await request("GET", "/api/document?business=mwangaza-academy", undefined, { Origin: "http://localhost:5500" });
+    r = await request("GET", "/api/document?business=menos-academy", undefined, { Origin: "http://localhost:5500" });
     check("doc: allowed origin -> CORS header", r.status === 200 && r.headers["access-control-allow-origin"] === "http://localhost:5500" && r.headers.vary === "Origin", r.headers);
 
     console.log("--- static pages");
@@ -234,7 +234,7 @@ async function main() {
     check("static: /handbook?x=1 keeps the query string", r.status === 301 && r.headers.location === "/handbook/?x=1", r.headers.location);
     r = await request("GET", "/handbook/");
     check("static: /handbook/ -> 200 text/html with the page title",
-      r.status === 200 && /text\/html/.test(r.headers["content-type"]) && r.text.includes("Mwangaza Academy: Parent Handbook assistant (demo)"), r.status);
+      r.status === 200 && /text\/html/.test(r.headers["content-type"]) && r.text.includes("Menos Academy: Parent Handbook assistant (demo)"), r.status);
     r = await request("GET", "/handbook/style.css");
     check("static: style.css -> 200 text/css", r.status === 200 && /text\/css/.test(r.headers["content-type"]), r.headers["content-type"]);
     r = await request("GET", "/handbook/script.js");
