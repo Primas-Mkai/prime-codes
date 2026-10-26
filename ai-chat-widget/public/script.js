@@ -106,3 +106,7 @@ async function getBotReply(userMessage) {
     return "Sorry, I'm having trouble connecting right now. Please try again in a moment.";
   }
 }
+
+// Footer year always matches today's date.
+const yearEl = document.getElementById("copyright-year");
+if (yearEl) yearEl.textContent = new Date().getFullYear();
