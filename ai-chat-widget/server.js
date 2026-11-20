@@ -1,6 +1,9 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
+const { validateLead } = require("./lead-validation");
+const { deliverLead } = require("./lead-delivery");
 
 // --- tiny .env loader (reads .env into process.env, no installs needed) ---
 function loadEnvFile(filePath) {
@@ -55,10 +58,24 @@ const GLOBAL_LIMIT_MAX = Number(process.env.GLOBAL_LIMIT_MAX) || 300;
 const GLOBAL_LIMIT_WINDOW_MS = Number(process.env.GLOBAL_LIMIT_WINDOW_MS) || 60 * 60 * 1000;
 const MAX_TRACKED_IPS = 10000;
 
+// Lead form limits (POST /api/lead): stricter, because each lead may become an email.
+const LEAD_RATE_LIMIT_MAX = Number(process.env.LEAD_RATE_LIMIT_MAX) || 3;
+const LEAD_RATE_LIMIT_WINDOW_MS = Number(process.env.LEAD_RATE_LIMIT_WINDOW_MS) || 60 * 60 * 1000;
+const LEAD_GLOBAL_LIMIT_MAX = Number(process.env.LEAD_GLOBAL_LIMIT_MAX) || 50;
+const LEAD_GLOBAL_LIMIT_WINDOW_MS = Number(process.env.LEAD_GLOBAL_LIMIT_WINDOW_MS) || 60 * 60 * 1000;
+
 // --- businesses: one folder each, loaded once at startup ---------------------
 // businesses/<id>/info.txt (system prompt text) and businesses/<id>/config.json.
 const DEFAULT_BUSINESS = "daily-grind";
 const BUSINESSES_DIR = path.join(__dirname, "businesses");
+
+// Returns { interests } when the business has lead capture switched on (with a usable interests list), else null.
+function getLeadConfig(config) {
+  const lc = config && config.leadCapture;
+  if (!lc || lc.enabled !== true || !Array.isArray(lc.interests)) return null;
+  const interests = lc.interests.filter((i) => typeof i === "string" && i.trim()).map((i) => i.trim());
+  return interests.length ? { interests } : null;
+}
 
 function loadBusinesses() {
   const loaded = {};
@@ -73,6 +90,8 @@ function loadBusinesses() {
     const info = fs.readFileSync(infoPath, "utf8");
     if (!info.trim()) throw new Error(`Business folder "${id}" has an empty info.txt`);
     loaded[id] = { info, config: JSON.parse(fs.readFileSync(configPath, "utf8")) };
+    // Lead capture is opt-in: only businesses with leadCapture.enabled get the tool and /api/lead.
+    loaded[id].lead = getLeadConfig(loaded[id].config);
     // "document" businesses also load document.txt (a missing mode means a normal "chat" business).
     if (loaded[id].config.mode === "document") loaded[id].doc = loadDocument(id);
   }
@@ -187,6 +206,9 @@ function verifyQuote(business, quote) {
   return { section, quote: cleanQuote(doc.text.slice(start, end)) };
 }
 
+// Tests can replace these with fakes; nothing in production touches them.
+const hooks = { askGemini, deliverLead };
+
 let BUSINESSES;
 try {
   BUSINESSES = loadBusinesses();
@@ -261,10 +283,16 @@ function serveStaticFile(req, res) {
 }
 
 // --- calling Gemini, with fallback ------------------------------------------
-// options (all optional): temperature, jsonMode (ask for a JSON object), meta (receives { model }).
+// options (all optional): temperature, jsonMode (ask for a JSON object), meta (receives { model }),
+// tools + toolChoice (function calling), returnMessage (return the whole message instead of just its text),
+// deadline (epoch ms by which the whole call must be finished, so several calls can share one time budget).
 async function askGemini(messages, options = {}) {
   const startedAt = Date.now();
-  const timeLeft = () => AI_TOTAL_TIMEOUT_MS - (Date.now() - startedAt);
+  const timeLeft = () =>
+    Math.min(
+      AI_TOTAL_TIMEOUT_MS - (Date.now() - startedAt),
+      options.deadline !== undefined ? options.deadline - Date.now() : Infinity
+    );
   let lastError;
   for (let round = 1; round <= MAX_ROUNDS; round++) {
     for (const model of MODELS) {
@@ -283,6 +311,7 @@ async function askGemini(messages, options = {}) {
             messages,
             ...(options.temperature !== undefined && { temperature: options.temperature }),
             ...(options.jsonMode && { response_format: { type: "json_object" } }),
+            ...(options.tools && { tools: options.tools, tool_choice: options.toolChoice || "auto" }),
           }),
           signal: AbortSignal.timeout(Math.min(AI_ATTEMPT_TIMEOUT_MS, timeLeft())),
         });
@@ -297,7 +326,7 @@ async function askGemini(messages, options = {}) {
       if (response.ok) {
         if (model !== MODELS[0]) console.log(`Fallback model used: ${model}`);
         if (options.meta) options.meta.model = model;
-        return data.choices[0].message.content;
+        return options.returnMessage ? data.choices[0].message : data.choices[0].message.content;
       }
 
       console.error(`Gemini error (${model}):`, response.status, JSON.stringify(data));
@@ -340,8 +369,6 @@ function checkOrigin(req) {
 
 // --- rate limiting ----------------------------------------------------------
 // Fixed windows, in memory only.
-const ipHits = new Map(); // ip -> { count, resetAt }
-let globalHits = { count: 0, resetAt: 0 };
 
 // Behind Render's proxy the real visitor address is the first entry of X-Forwarded-For.
 // A determined attacker can fake this header to look like many visitors, which is why
@@ -355,32 +382,170 @@ function clientIp(req) {
   return req.socket.remoteAddress || "unknown";
 }
 
-// Returns 0 if the request is allowed, otherwise the number of seconds to wait.
+const limiters = [];
+
+// A per-visitor limit plus a global cap. check(ip) returns 0 if the request is allowed,
+// otherwise the number of seconds to wait.
+function makeRateLimiter({ perMax, perWindowMs, globalMax, globalWindowMs }) {
+  const ipHits = new Map(); // ip -> { count, resetAt }
+  let globalHits = { count: 0, resetAt: 0 };
+  const limiter = {
+    check(ip) {
+      const now = Date.now();
+
+      // Per-visitor check first: a blocked visitor must not use up the server-wide allowance.
+      if (ipHits.size > MAX_TRACKED_IPS) ipHits.clear();
+      let entry = ipHits.get(ip);
+      if (!entry || now >= entry.resetAt) {
+        entry = { count: 0, resetAt: now + perWindowMs };
+        ipHits.set(ip, entry);
+      }
+      entry.count++;
+      if (entry.count > perMax) return Math.ceil((entry.resetAt - now) / 1000);
+
+      // Only requests that passed the per-visitor check count toward the global cap.
+      if (now >= globalHits.resetAt) globalHits = { count: 0, resetAt: now + globalWindowMs };
+      globalHits.count++;
+      if (globalHits.count > globalMax) return Math.ceil((globalHits.resetAt - now) / 1000);
+      return 0;
+    },
+    cleanup(now) {
+      for (const [ip, entry] of ipHits) if (now >= entry.resetAt) ipHits.delete(ip);
+    },
+  };
+  limiters.push(limiter);
+  return limiter;
+}
+
+const chatLimiter = makeRateLimiter({
+  perMax: RATE_LIMIT_MAX,
+  perWindowMs: RATE_LIMIT_WINDOW_MS,
+  globalMax: GLOBAL_LIMIT_MAX,
+  globalWindowMs: GLOBAL_LIMIT_WINDOW_MS,
+});
+const leadLimiter = makeRateLimiter({
+  perMax: LEAD_RATE_LIMIT_MAX,
+  perWindowMs: LEAD_RATE_LIMIT_WINDOW_MS,
+  globalMax: LEAD_GLOBAL_LIMIT_MAX,
+  globalWindowMs: LEAD_GLOBAL_LIMIT_WINDOW_MS,
+});
+
+// Used by /api/chat and /api/ask-document.
 function checkRateLimit(ip) {
-  const now = Date.now();
-
-  // Per-visitor check first: a blocked visitor must not use up the server-wide allowance.
-  if (ipHits.size > MAX_TRACKED_IPS) ipHits.clear();
-  let entry = ipHits.get(ip);
-  if (!entry || now >= entry.resetAt) {
-    entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
-    ipHits.set(ip, entry);
-  }
-  entry.count++;
-  if (entry.count > RATE_LIMIT_MAX) return Math.ceil((entry.resetAt - now) / 1000);
-
-  // Only requests that passed the per-visitor check count toward the global cap.
-  if (now >= globalHits.resetAt) globalHits = { count: 0, resetAt: now + GLOBAL_LIMIT_WINDOW_MS };
-  globalHits.count++;
-  if (globalHits.count > GLOBAL_LIMIT_MAX) return Math.ceil((globalHits.resetAt - now) / 1000);
-  return 0;
+  return chatLimiter.check(ip);
 }
 
 // Remove expired entries every 5 minutes (unref so this timer never keeps the server alive).
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, entry] of ipHits) if (now >= entry.resetAt) ipHits.delete(ip);
+  for (const limiter of limiters) limiter.cleanup(now);
 }, 5 * 60 * 1000).unref();
+
+// --- lead capture: the propose_lead tool used by /api/chat ----------------------
+const LEAD_TOOL_NAME = "propose_lead";
+const LEAD_CONFIRM_REPLY =
+  "Please check the details below and press Send. / Tafadhali hakiki taarifa hapa chini kisha bonyeza Tuma.";
+const LEAD_PROMPT_SUFFIX =
+  "\n\nLead capture rule: when the visitor has given their name, a contact (email or phone) and their interest, call the " +
+  LEAD_TOOL_NAME +
+  " tool. Do not say or imply that the details have been sent: the visitor must confirm first, by pressing the Send button that appears under your message.";
+
+function buildLeadTool(interests) {
+  return {
+    type: "function",
+    function: {
+      name: LEAD_TOOL_NAME,
+      description:
+        "Call this only when the visitor has actually given, in this conversation, their name, at least one contact (email or phone) and what they are interested in. Never invent or guess values. Calling it only shows the visitor a summary to confirm; it sends nothing.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The visitor's full name." },
+          email: { type: "string", description: "The visitor's email address, exactly as they typed it." },
+          phone: { type: "string", description: "The visitor's phone number, exactly as they typed it." },
+          company: { type: "string", description: "The visitor's company name." },
+          interest: { type: "string", enum: interests, description: "What the visitor is interested in." },
+          message: { type: "string", description: "A short message from the visitor." },
+        },
+        required: ["name", "interest"],
+      },
+    },
+  };
+}
+
+// Looks at a model message. Returns { reply } for plain text, { reply, lead } for a valid proposal, or
+// { invalid: { field, reason }, toolCall } when the proposal must be corrected.
+function readLeadMessage(message, interests, visitorMessages) {
+  const call = Array.isArray(message.tool_calls)
+    ? message.tool_calls.find((c) => c && c.function && c.function.name === LEAD_TOOL_NAME)
+    : null;
+  const text = typeof message.content === "string" ? message.content.trim() : "";
+  if (!call) {
+    if (!text) throw new Error("model gave no text");
+    return { reply: text };
+  }
+  // The arguments should be a JSON string; an object is accepted too. Anything unreadable is a failed proposal.
+  let args = null;
+  const rawArguments = call.function.arguments;
+  if (typeof rawArguments === "string") {
+    try {
+      args = JSON.parse(rawArguments);
+    } catch (err) {
+      args = null; // invalid JSON: a failed proposal
+    }
+  } else if (rawArguments && typeof rawArguments === "object") {
+    args = rawArguments;
+  }
+  const result = args
+    ? validateLead(args, interests, { visitorMessages })
+    : { ok: false, field: "details", reason: "could not be read; please send them again." };
+  if (result.ok) return { reply: text || LEAD_CONFIRM_REPLY, lead: result.lead };
+  return { invalid: { field: result.field, reason: result.reason }, toolCall: call, text };
+}
+
+// Chat for a lead-capture business. A valid proposal is returned as "lead" for the visitor to confirm.
+// An invalid one is never shown: the model gets ONE extra round (a tool result describing the problem) to
+// ask the visitor for a correction. All model calls share one time budget (AI_TOTAL_TIMEOUT_MS).
+async function chatWithLeadCapture(business, messages, visitorMessages, meta) {
+  const interests = business.lead.interests;
+  const deadline = Date.now() + AI_TOTAL_TIMEOUT_MS;
+  const options = { tools: [buildLeadTool(interests)], toolChoice: "auto", returnMessage: true, meta, deadline };
+  const withSuffix = [{ role: "system", content: messages[0].content + LEAD_PROMPT_SUFFIX }, ...messages.slice(1)];
+
+  const first = readLeadMessage(await hooks.askGemini(withSuffix, options), interests, visitorMessages);
+  if (!first.invalid) return first;
+
+  // The model's tool call may come back without a usable id (missing, empty or not a string). Rebuild the
+  // entry from scratch (never mutating the model's object) and use one id for both the assistant message
+  // and the tool result, so the follow-up request is always well-formed.
+  const modelCall = first.toolCall;
+  const callId =
+    typeof modelCall.id === "string" && modelCall.id.trim() ? modelCall.id : "call_" + crypto.randomBytes(8).toString("hex");
+  const rawArgs = modelCall.function.arguments;
+  const toolCall = {
+    id: callId,
+    type: "function",
+    function: {
+      name: LEAD_TOOL_NAME,
+      // Always a string: the model's own string, else its object as JSON, else "{}".
+      arguments: typeof rawArgs === "string" ? rawArgs : rawArgs && typeof rawArgs === "object" ? JSON.stringify(rawArgs) : "{}",
+    },
+  };
+
+  const followUp = [
+    ...withSuffix,
+    { role: "assistant", content: first.text || null, tool_calls: [toolCall] },
+    {
+      role: "tool",
+      tool_call_id: callId,
+      name: LEAD_TOOL_NAME,
+      content: JSON.stringify({ error: first.invalid.field + " " + first.invalid.reason }),
+    },
+  ];
+  const second = readLeadMessage(await hooks.askGemini(followUp, options), interests, visitorMessages);
+  if (second.invalid) throw new Error("lead proposal still invalid after one correction round");
+  return second;
+}
 
 // --- the /api/chat endpoint -------------------------------------------------
 function handleChat(req, res, corsHeaders) {
@@ -454,11 +619,20 @@ function handleChat(req, res, corsHeaders) {
       .map((m) => ({ role: m.role, content: m.content }));
 
     try {
-      const reply = await askGemini([
+      const messages = [
         { role: "system", content: BUSINESSES[businessId].info },
         ...safeHistory,
         { role: "user", content: userMessage },
-      ]);
+      ];
+      if (BUSINESSES[businessId].lead) {
+        // Only the visitor's own messages count when checking that a contact detail was really typed by them.
+        const visitorMessages = [...safeHistory.filter((m) => m.role === "user").map((m) => m.content), userMessage];
+        const meta = {};
+        const result = await chatWithLeadCapture(BUSINESSES[businessId], messages, visitorMessages, meta);
+        console.log(`chat business=${businessId} lead_proposal=${result.lead ? "shown" : "none"} model=${meta.model || "-"}`);
+        return sendJson(res, 200, result, corsHeaders);
+      }
+      const reply = await hooks.askGemini(messages);
       sendJson(res, 200, { reply }, corsHeaders);
     } catch (err) {
       console.error("Chat failed:", err.message);
@@ -474,8 +648,6 @@ function handleChat(req, res, corsHeaders) {
 }
 
 // --- POST /api/ask-document: answer from the business's document, with a verified quote ---
-// Tests can replace hooks.askGemini with a fake; nothing in production touches it.
-const hooks = { askGemini };
 
 // Tolerant parsing: strip ``` fences if present, then JSON.parse. Returns a valid object or null.
 function parseModelAnswer(raw) {
@@ -591,6 +763,79 @@ function handleAskDocument(req, res, corsHeaders) {
   });
 }
 
+// --- POST /api/lead: the visitor confirmed a lead; validate it and hand it to delivery -------------
+// Nothing is stored. Never log the lead or any message text: only the business id and the outcome.
+function handleLead(req, res, corsHeaders) {
+  let body = "";
+  let tooLarge = false;
+  req.on("data", (chunk) => {
+    if (tooLarge) return;
+    body += chunk;
+    if (body.length > MAX_BODY_BYTES) {
+      tooLarge = true;
+      body = "";
+      res.on("finish", () => req.destroy());
+      sendJson(res, 413, { error: "Request too large." }, { ...corsHeaders, Connection: "close" });
+    }
+  });
+
+  req.on("end", async () => {
+    if (tooLarge) return;
+
+    let parsed = null;
+    try {
+      parsed = JSON.parse(body);
+    } catch (err) {
+      parsed = null;
+    }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) parsed = {};
+
+    // Hidden spam-trap field: real visitors never fill it. Pretend it worked, do nothing, don't count it.
+    if (parsed.website !== undefined && parsed.website !== null && parsed.website !== "") {
+      console.log("lead honeypot_hit=1");
+      return sendJson(res, 200, { ok: true }, corsHeaders);
+    }
+
+    const retryAfter = leadLimiter.check(clientIp(req));
+    if (retryAfter) {
+      return sendJson(
+        res,
+        429,
+        { error: "Too many submissions. Please try again later." },
+        { ...corsHeaders, "Retry-After": String(retryAfter) }
+      );
+    }
+
+    if (typeof parsed.business !== "string" || !Object.prototype.hasOwnProperty.call(BUSINESSES, parsed.business)) {
+      return sendJson(res, 400, { error: "Unknown business." }, corsHeaders);
+    }
+    const business = BUSINESSES[parsed.business];
+    if (!business.lead) {
+      return sendJson(res, 400, { error: "Lead capture is not enabled for this business." }, corsHeaders);
+    }
+
+    // No chat history is sent here, so the "visitor typed it" check is skipped.
+    const result = validateLead(parsed.lead, business.lead.interests);
+    if (!result.ok) {
+      console.log(`lead business=${parsed.business} result=invalid field=${result.field}`);
+      return sendJson(res, 400, { error: "invalid", field: result.field, reason: result.reason }, corsHeaders);
+    }
+
+    try {
+      await hooks.deliverLead(result.lead, business);
+      console.log(`lead business=${parsed.business} result=delivered`);
+      sendJson(res, 200, { ok: true }, corsHeaders);
+    } catch (err) {
+      if (err && err.code === "NOT_CONFIGURED") {
+        console.log(`lead business=${parsed.business} result=not_configured`);
+        return sendJson(res, 501, { error: "delivery_not_configured" }, corsHeaders);
+      }
+      console.error(`lead business=${parsed.business} delivery_failed code=${(err && err.code) || "unknown"}`);
+      sendJson(res, 502, { error: "delivery_failed" }, corsHeaders);
+    }
+  });
+}
+
 // --- GET /api/config: the public, whitelisted settings the widget needs ----------
 const DEFAULT_THEME = { primary: "#1F4A3A", accent: "#C9A15A", primaryText: "#FFFFFF", accentText: "#1C1B19" };
 
@@ -626,6 +871,8 @@ function buildPublicConfig(config) {
       .slice(0, 5)
       .map((q) => q.slice(0, 120));
   }
+  const lead = getLeadConfig(config);
+  if (lead) publicConfig.leadCapture = { enabled: true, interests: lead.interests };
   return publicConfig;
 }
 
@@ -674,8 +921,8 @@ function handleDocument(req, res) {
 
 const server = http.createServer((req, res) => {
   const pathname = req.url.split("?")[0];
-  const isAskRoute = pathname === "/api/ask-document";
-  if ((pathname === "/api/chat" || isAskRoute) && (req.method === "POST" || req.method === "OPTIONS")) {
+  const postRoutes = { "/api/chat": handleChat, "/api/ask-document": handleAskDocument, "/api/lead": handleLead };
+  if (Object.prototype.hasOwnProperty.call(postRoutes, pathname) && (req.method === "POST" || req.method === "OPTIONS")) {
     const corsHeaders = checkOrigin(req);
     if (!corsHeaders) {
       req.resume();
@@ -686,7 +933,7 @@ const server = http.createServer((req, res) => {
       res.end();
       return;
     }
-    (isAskRoute ? handleAskDocument : handleChat)(req, res, corsHeaders);
+    postRoutes[pathname](req, res, corsHeaders);
     return;
   }
   if (req.method === "GET" && pathname === "/api/config") {
@@ -712,4 +959,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, normalise, normaliseWithMap, verifyQuote, hooks, BUSINESSES };
+module.exports = { server, normalise, normaliseWithMap, verifyQuote, hooks, BUSINESSES, buildPublicConfig };

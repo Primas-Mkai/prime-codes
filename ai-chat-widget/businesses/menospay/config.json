@@ -1,0 +1,17 @@
+{
+  "name": "Menos Pay",
+  "greeting": "Hi! I'm the Menos Pay demo assistant. Ask me about payments, fees, or any fintech word you find confusing. (Menos Pay is a fictional demo company.)",
+  "fallbackContact": "email us at hello@menospay.example or call +255 700 000 111",
+  "assistantName": "Menos Pay assistant",
+  "buttonLabel": "Ask Menos Pay",
+  "theme": {
+    "primary": "#0F2A43",
+    "accent": "#1FB5A0",
+    "primaryText": "#FFFFFF",
+    "accentText": "#0F2A43"
+  },
+  "leadCapture": {
+    "enabled": true,
+    "interests": ["Checkout", "Payouts", "Dashboard", "API", "Other"]
+  }
+}

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menos Pay: accept and send money in one place (fictional demo)</title>
+<meta name="description" content="Menos Pay is a fictional demo payments company for Tanzanian businesses, made for a portfolio project. Explore the products, fees and a fee calculator.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0F2A43">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2%3000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230F2A43'/%3E%3Cpath d='M8 22V10l8 8 8-8v12' fill='none' stroke='%231FB5A0' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="top">
+  <p class="banner">Menos Pay is a fictional demo company made for a portfolio project. No real payments are processed.</p>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#top" aria-label="Menos Pay, back to the top">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Menos Pay</span>
+      </a>
+      <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">
+        <span class="menu-btn-text">Menu</span>
+        <svg class="menu-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path id="menu-icon-path" d="M3 6h14M3 10h14M3 14h14"/></svg>
+      </button>
+      <nav class="site-nav" id="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="#products">Products</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#calculator">Calculator</a></li>
+          <li><a href="#glossary">Glossary</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+</div>
+
+<main id="main">
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Payments for Tanzanian businesses</p>
+        <h1 id="hero-title">Accept payments and send money from one place</h1>
+        <p class="lead">Menos Pay is a payments platform for small and medium businesses in Tanzania. Collect money from customers, pay out staff, suppliers and partners, and see everything in one dashboard.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#pricing">See pricing</a>
+          <button class="btn btn-secondary" id="try-assistant" type="button">Try the demo assistant</button>
+        </div>
+      </div>
+
+      <div class="sample-card" role="group" aria-label="Sample payment, for illustration only">
+        <div class="sample-head">
+          <span class="sample-title">Menos Dashboard</span>
+          <span class="sample-badge">Sample data</span>
+        </div>
+        <p class="sample-label">Payment received</p>
+        <p class="sample-amount">TZS 100,000</p>
+        <dl class="sample-rows">
+          <div><dt>Fee</dt><dd>TZS 2,500</dd></div>
+          <div class="sample-total"><dt>You receive</dt><dd>TZS 97,500</dd></div>
+        </dl>
+        <p class="sample-note">Starter plan, paid by mobile money (2.5% fee).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="products" aria-labelledby="products-title">
+    <div class="wrap">
+      <p class="eyebrow">Products</p>
+      <h2 id="products-title">Four tools, one platform</h2>
+      <p class="section-lead">For shops, schools, clinics, tour operators, online sellers and software teams that need to collect or send money. Amounts are in Tanzanian shillings (TZS).</p>
+      <div class="card-grid four">
+        <article class="card">
+          <span class="icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg></span>
+          <h3>Menos Checkout</h3>
+          <p>Accept payments online through a payment link or through the API. Customers can pay by mobile money or by card.</p>
+        </article>
+        <article class="card">
+          <span class="icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h12M12 6l6 6-6 6"/></svg></span>
+          <h3>Menos Payouts</h3>
+          <p>Send many payments at once, such as salaries or supplier payments, to mobile money wallets or bank accounts. Upload a spreadsheet or use the API.</p>
+        </article>
+        <article class="card">
+          <span class="icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+          <h3>Menos Dashboard</h3>
+          <p>A web page where your business sees payments, payouts, settlements and refunds, and downloads reports.</p>
+        </article>
+        <article class="card">
+          <span class="icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 5l-4 14"/></svg></span>
+          <h3>Menos API</h3>
+          <p>Developer tools with documentation and a test mode (sandbox), so developers can try everything with fake money before going live.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title">From sign-up to live in three steps</h2>
+      <ol class="steps">
+        <li>
+          <span class="step-num" aria-hidden="true">1</span>
+          <h3>Create an account and get verified</h3>
+          <p>Create an account on the website, enter your business details and upload verification documents. This check is called KYC ("know your customer"): the company confirms who the business is before letting it handle money. Verification usually takes 2 to 3 working days.</p>
+        </li>
+        <li>
+          <span class="step-num" aria-hidden="true">2</span>
+          <h3>Try everything in test mode</h3>
+          <p>Every plan includes a free test mode (sandbox), a practice area with fake money. Developers can start in test mode straight away, before verification.</p>
+        </li>
+        <li>
+          <span class="step-num" aria-hidden="true">3</span>
+          <h3>Go live</h3>
+          <p>After verification, your business can go live and start accepting payments and sending payouts.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" id="pricing" aria-labelledby="pricing-title">
+    <div class="wrap">
+      <p class="eyebrow">Pricing</p>
+      <h2 id="pricing-title">Two plans, no setup fee</h2>
+      <p class="section-lead">Demo prices in Tanzanian shillings (TZS). Failed payments cost nothing, and the free test mode is included on every plan.</p>
+
+      <div class="card-grid two">
+        <article class="plan">
+          <h3>Starter</h3>
+          <p class="plan-price"><span class="plan-amount">TZS 0</span> <span class="plan-unit">per month</span></p>
+          <dl class="spec">
+            <div><dt>Setup fee</dt><dd>TZS 0</dd></div>
+            <div><dt>Checkout fee</dt><dd>2.5% of each successful payment</dd></div>
+            <div><dt>Card payments</dt><dd>An extra 0.7% on top of the Checkout fee</dd></div>
+            <div><dt>Settlement</dt><dd>Within 2 working days</dd></div>
+            <div><dt>Test mode</dt><dd>Included</dd></div>
+          </dl>
+        </article>
+        <article class="plan plan-growth">
+          <h3>Growth</h3>
+          <p class="plan-price"><span class="plan-amount">TZS 50,000</span> <span class="plan-unit">per month</span></p>
+          <dl class="spec">
+            <div><dt>Setup fee</dt><dd>TZS 0</dd></div>
+            <div><dt>Checkout fee</dt><dd>1.8% of each successful payment</dd></div>
+            <div><dt>Card payments</dt><dd>An extra 0.7% on top of the Checkout fee</dd></div>
+            <div><dt>Settlement</dt><dd>Next working day (T+1)</dd></div>
+            <div><dt>Test mode</dt><dd>Included</dd></div>
+          </dl>
+        </article>
+      </div>
+
+      <div class="pricing-extra">
+        <div class="table-wrap">
+          <table>
+            <caption>Payout fees and limits (all plans)</caption>
+            <thead><tr><th scope="col">Item</th><th scope="col">Demo value</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Payout to a mobile money wallet</th><td>TZS 500 per payout</td></tr>
+              <tr><th scope="row">Payout to a bank account</th><td>TZS 1,500 per payout</td></tr>
+              <tr><th scope="row">Maximum payouts in one batch</th><td>500</td></tr>
+              <tr><th scope="row">Minimum single payment</th><td>TZS 1,000</td></tr>
+              <tr><th scope="row">Maximum single payment</th><td>TZS 5,000,000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="notes">
+          <li>Failed payments cost nothing.</li>
+          <li>If you refund a payment, the original Checkout fee is not returned.</li>
+          <li>Settlement is when Menos Pay passes the money it collected to your business account.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt" id="calculator" aria-labelledby="calc-title">
+    <div class="wrap">
+      <p class="eyebrow">Fee calculator</p>
+      <h2 id="calc-title">See what a payment costs</h2>
+      <p class="section-lead">Type an amount and choose a plan and payment method. The Checkout fee is worked out as you type.</p>
+
+      <div class="calc" role="group" aria-labelledby="calc-title">
+        <div class="calc-inputs">
+          <div class="field">
+            <label for="amount">Payment amount (TZS)</label>
+            <input id="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 100,000" aria-describedby="amount-help">
+            <p class="help" id="amount-help">From TZS 1,000 to TZS 5,000,000.</p>
+          </div>
+          <fieldset class="choice">
+            <legend>Plan</legend>
+            <label class="option"><input type="radio" name="plan" value="starter" checked> <span>Starter</span></label>
+            <label class="option"><input type="radio" name="plan" value="growth"> <span>Growth</span></label>
+          </fieldset>
+          <fieldset class="choice">
+            <legend>Payment method</legend>
+            <label class="option"><input type="radio" name="method" value="mobile" checked> <span>Mobile money</span></label>
+            <label class="option"><input type="radio" name="method" value="card"> <span>Card</span></label>
+          </fieldset>
+        </div>
+
+        <div class="calc-result" id="calc-result" aria-live="polite">
+          <p class="calc-empty">Enter an amount to see the fee.</p>
+        </div>
+      </div>
+      <p class="fine-print">Monthly plan fees are not included. This is a demo calculation for a fictional company.</p>
+    </div>
+  </section>
+
+  <section class="section" id="glossary" aria-labelledby="glossary-title">
+    <div class="wrap">
+      <p class="eyebrow">Fintech words</p>
+      <h2 id="glossary-title">Plain-language glossary</h2>
+      <p class="section-lead">Payments come with a lot of jargon. Here are the common words, explained simply.</p>
+      <div class="accordion two-col">
+        <details><summary>Wallet</summary><p>An account kept on a phone or app that holds money.</p></details>
+        <details><summary>Mobile money</summary><p>Moving and storing money using a phone number instead of a bank account.</p></details>
+        <details><summary>KYC</summary><p>Identity checks a company must do before handling someone's money. It stands for "know your customer".</p></details>
+        <details><summary>API</summary><p>A way for two programs to talk to each other, so a website can ask Menos Pay to collect a payment without a person clicking around.</p></details>
+        <details><summary>Sandbox / test mode</summary><p>A practice area with fake money.</p></details>
+        <details><summary>Settlement</summary><p>The moment the money Menos Pay collected is sent to the business's own account.</p></details>
+        <details><summary>Float</summary><p>Money held temporarily while it moves between parties.</p></details>
+        <details><summary>Chargeback</summary><p>When a card customer disputes a payment with their bank and the money is pulled back.</p></details>
+        <details><summary>Webhook</summary><p>An automatic message Menos Pay sends to a business's system when something happens, such as "payment received".</p></details>
+        <details><summary>Reconciliation</summary><p>Matching your records against the payment records to check that they agree.</p></details>
+        <details><summary>Payout</summary><p>Money sent out from the business to someone else.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt" id="faq" aria-labelledby="faq-title">
+    <div class="wrap narrow">
+      <p class="eyebrow">FAQ</p>
+      <h2 id="faq-title">Common questions</h2>
+      <div class="accordion">
+        <details>
+          <summary>Is Menos Pay a real company?</summary>
+          <p>No. Menos Pay is a fictional demo company made for a portfolio project. No real payments are processed.</p>
+        </details>
+        <details>
+          <summary>Are failed payments charged?</summary>
+          <p>No. Failed payments cost nothing.</p>
+        </details>
+        <details>
+          <summary>When do I get my money?</summary>
+          <p>Settlement is when Menos Pay sends the money it collected to your business account. On the Growth plan this happens the next working day (T+1). On the Starter plan it happens within 2 working days.</p>
+        </details>
+        <details>
+          <summary>How long does verification take?</summary>
+          <p>Verification usually takes 2 to 3 working days. Developers can start in test mode straight away, before verification.</p>
+        </details>
+        <details>
+          <summary>What are the limits?</summary>
+          <p>The minimum single payment is TZS 1,000 and the maximum is TZS 5,000,000. You can send up to 500 payouts in one batch.</p>
+        </details>
+        <details>
+          <summary>Is there a test mode?</summary>
+          <p>Yes. A free test mode (sandbox) is included on every plan, so you can try everything with fake money.</p>
+        </details>
+        <details>
+          <summary>Do I get the fee back if I refund a payment?</summary>
+          <p>No. The original Checkout fee is not returned on a refund.</p>
+        </details>
+        <details>
+          <summary>How can my customers pay?</summary>
+          <p>With Menos Checkout, customers can pay by mobile money or by card, through a payment link or through the API.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="contact" aria-labelledby="contact-title">
+    <div class="wrap narrow">
+      <p class="eyebrow">Contact</p>
+      <h2 id="contact-title">Talk to the team</h2>
+      <div class="contact-card">
+        <dl class="contact-list">
+          <div><dt>Email</dt><dd>hello@menospay.example</dd></div>
+          <div><dt>Phone</dt><dd>+255 700 000 111</dd></div>
+          <div><dt>Support hours</dt><dd>Weekdays 08:00 to 17:00, East Africa Time</dd></div>
+        </dl>
+        <p class="demo-note">These details are placeholders. Menos Pay is a fictional demo, so nobody will reply. To see how the assistant works, use the chat button in the corner of the page.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Menos Pay is a fictional demo company created for a portfolio project. It is not a real business and processes no real payments.</p>
+    <p>&copy; <span id="year"></span> Menos Pay (fictional demo)</p>
+  </div>
+</footer>
+
+<div class="hint" id="assistant-hint" role="status" hidden>
+  <p>Use the chat button in the corner to talk to the Menos Pay demo assistant. If you do not see it yet, the chat server may be waking up. This can take up to a minute.</p>
+  <button type="button" class="hint-close" id="hint-close" aria-label="Close this hint">Got it</button>
+</div>
+
+<script src="fees.js"></script>
+<script src="script.js"></script>
+<script src="https://prime-codes.onrender.com/widget.js" data-business="menospay" defer></script>
+</body>
+</html>
