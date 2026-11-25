@@ -38,8 +38,8 @@ function request(port, method, urlPath, body) {
   });
 }
 
-async function startMock(leadResult) {
-  const mock = createMockServer({ leadResult });
+async function startMock(leadResult, options = {}) {
+  const mock = createMockServer({ leadResult, ...options });
   await new Promise((r) => mock.server.listen(0, "127.0.0.1", r));
   mock.port = mock.server.address().port;
   return mock;
@@ -183,8 +183,10 @@ async function main() {
     await shot("card-1280.png");
     await evalJs(`${btn("send")}.click(); true`);
     check("200: success line shown, buttons replaced, card locked",
-      await waitFor(`${lastCard}.querySelector(".card-status").textContent === "Thank you. The team will get back to you on weekdays."`) &&
+      await waitFor(`${lastCard}.querySelector(".card-status").textContent.startsWith("Received.")`) &&
       await evalJs(`${lastCard}.querySelector(".card-actions").hidden === true && ${lastCard}.classList.contains("locked") && ${btn("send")}.disabled && ${btn("edit")}.disabled`), await cardText(".card-status"));
+    check("200: the success text names the business from the config and keeps the demo note on a second, smaller line",
+      await evalJs(`(() => { const s = ${lastCard}.querySelector(".card-status"); const n = s.querySelector(".card-status-note"); return s.firstChild.textContent === "Received. Thank you! Your details have been sent to the Menos Pay team." && !!n && n.textContent === "This is a demo, so no reply will come." && s.getAttribute("role") === "status"; })()`), await cardText(".card-status"));
     check("exactly one request reached /api/lead, with the exact lead from the server, the business id and an empty spam-trap field",
       mock.stats.leadRequests === 1 && JSON.stringify(mock.stats.lastLeadBody) === JSON.stringify({ business: "menospay", lead: LEAD, website: "" }), mock.stats.lastLeadBody);
     await evalJs(`${btn("send")}.click(); true`);
@@ -206,7 +208,7 @@ async function main() {
     await sleep(500);
     check('while waiting: Send says "Sending..." and both buttons are disabled', await evalJs(`${btn("send")}.textContent === "Sending..." && ${btn("send")}.disabled && ${btn("edit")}.disabled`), await cardText(".card-btn"));
     await waitFor(`${lastCard}.classList.contains("locked")`, 8000);
-    check("a double click sent only one request, which then succeeded", mock.stats.leadRequests === 1 && (await cardText(".card-status")) === "Thank you. The team will get back to you on weekdays.", mock.stats.leadRequests);
+    check("a double click sent only one request, which then succeeded", mock.stats.leadRequests === 1 && (await cardText(".card-status")).startsWith("Received. Thank you! Your details have been sent to the Menos Pay team."), mock.stats.leadRequests);
     mock.server.close();
   }
 
@@ -228,7 +230,7 @@ async function main() {
     await waitFor(`${lastCard}.querySelector(".card-status").textContent !== ""`);
     const status = await cardText(".card-status");
     const state = await evalJs(`({ send: ${btn("send")}.disabled, edit: ${btn("edit")}.disabled, locked: ${lastCard}.classList.contains("locked"), label: ${btn("send")}.textContent })`);
-    check(label, status === message && state.send === disabled.send && state.edit === disabled.edit && state.locked === locked && state.label === "Send" && !/thank you/i.test(status), { status, state });
+    check(label, status === message && state.send === disabled.send && state.edit === disabled.edit && state.locked === locked && state.label === "Send" && !/received|thank you|have been sent/i.test(status), { status, state });
     if (mode === "fail") {
       await evalJs(`${btn("send")}.click(); true`);
       await sleep(500);
@@ -282,6 +284,17 @@ async function main() {
     await waitFor(`${qa(".b.bot")}.length >= 2`);
     await sleep(300);
     check("a business without lead capture: the reply is shown and any lead object is ignored (no card)", (await cardCount()) === 0 && mock.stats.chatRequests === 1, await cardCount());
+    mock.server.close();
+  }
+
+  console.log("\n--- success without the optional note");
+  {
+    const mock = await startMock("ok", { successNote: false });
+    await getCard(mock, "/", 1280);
+    await evalJs(`${btn("send")}.click(); true`);
+    await waitFor(`${lastCard}.querySelector(".card-status").textContent.startsWith("Received.")`);
+    check("no successNote in the config -> only the first line, no second line",
+      await evalJs(`${lastCard}.querySelector(".card-status").textContent === "Received. Thank you! Your details have been sent to the Menos Pay team." && !${lastCard}.querySelector(".card-status-note")`), await cardText(".card-status"));
     mock.server.close();
   }
 

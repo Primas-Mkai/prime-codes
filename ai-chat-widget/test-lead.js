@@ -86,6 +86,9 @@ async function main() {
   const fake = await startFakeGemini();
   process.env.GEMINI_URL = fake.url;
   process.env.GEMINI_API_KEY = "dummy";
+  // Tests must never send a real email: empty values here win over anything in .env (the loader never overwrites).
+  process.env.RESEND_API_KEY = "";
+  process.env.LEAD_TO_EMAIL = "";
   const app = require("./server.js");
   await new Promise((r) => app.server.listen(0, "127.0.0.1", r));
   port = app.server.address().port;
@@ -200,10 +203,16 @@ async function main() {
   check("menospay config has leadCapture with its interests", r.json.leadCapture && r.json.leadCapture.enabled === true && JSON.stringify(r.json.leadCapture.interests) === JSON.stringify(INTERESTS), r.json);
   check("menospay config: whitelisted keys only, no contact email/keys/fallbackContact",
     Object.keys(r.json).sort().join() === "assistantName,buttonLabel,greeting,leadCapture,name,theme" && !/hello@menospay|fallback|KEY|RESEND/i.test(r.text), Object.keys(r.json));
+  check("menospay leadCapture has exactly enabled, interests and the successNote text",
+    Object.keys(r.json.leadCapture).sort().join() === "enabled,interests,successNote" && r.json.leadCapture.successNote === "This is a demo, so no reply will come.", r.json.leadCapture);
+  const note = (successNote) => app.buildPublicConfig({ name: "X", leadCapture: { enabled: true, interests: ["A"], successNote } }).leadCapture;
+  check("successNote is exposed only when it is 1 to 120 characters once cleaned",
+    note("  a\u0007b \n c  ").successNote === "a b c" && note("x".repeat(120)).successNote.length === 120 &&
+    !("successNote" in note("x".repeat(121))) && !("successNote" in note("")) && !("successNote" in note("   ")) && !("successNote" in note(42)) && !("successNote" in note(undefined)), null);
   check("menospay theme and labels", r.json.name === "Menos Pay" && r.json.buttonLabel === "Ask Menos Pay" && r.json.theme.primary === "#0F2A43" && r.json.theme.accent === "#1FB5A0", r.json);
   for (const id of ["daily-grind", "menos-trails", "menos-academy"]) {
     r = await request("GET", "/api/config?business=" + id);
-    check(`${id} config has no leadCapture`, r.status === 200 && !("leadCapture" in r.json), r.json);
+    check(`${id} config has no leadCapture (and so no successNote)`, r.status === 200 && !("leadCapture" in r.json) && !/successNote/.test(r.text), r.json);
   }
 
   console.log("--- /api/chat with the propose_lead tool");

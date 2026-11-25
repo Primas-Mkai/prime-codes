@@ -104,6 +104,7 @@
       ".card-btn:focus-visible{outline:3px solid var(--primary);outline-offset:2px}",
       ".card-status{margin-top:8px;font-size:13px;overflow-wrap:anywhere}",
       ".card-status:empty{display:none}",
+      ".card-status-note{margin-top:2px;font-size:12px;opacity:.85}",
       ".card-status.bad{color:#8A1F11}.card-status.good{color:#0B6B3A}",
       ".card-note{margin-top:8px;font-size:12px;color:#6b6b66}",
       "@media (min-width:900px){",
@@ -231,6 +232,8 @@
       // ---------- lead confirm card (only for businesses with lead capture switched on) ----------
       var leadEnabled = !!(cfg.leadCapture && cfg.leadCapture.enabled === true);
       var businessName = typeof cfg.name === "string" && cfg.name.trim() ? cfg.name.trim() : "business";
+      // Optional second line after a successful send, from the config (for example "This is a demo, so no reply will come.").
+      var successNote = leadEnabled && typeof cfg.leadCapture.successNote === "string" ? cfg.leadCapture.successNote.trim().slice(0, 120) : "";
       var LEAD_FIELDS = [["name", "Name"], ["email", "Email"], ["phone", "Phone"], ["company", "Company"], ["interest", "Interest"], ["message", "Message"]];
       var cards = [];
 
@@ -243,9 +246,10 @@
         card.el.classList.add("locked");
         setCardDisabled(card, true);
       }
-      function cardStatus(card, kind, text) {
+      function cardStatus(card, kind, text, smallLine) {
         card.status.className = "card-status" + (kind ? " " + kind : "");
         card.status.textContent = text;
+        if (smallLine) card.status.appendChild(el("div", "card-status-note", smallLine)); // inside the announced area
       }
 
       function showLeadCard(lead) {
@@ -297,7 +301,7 @@
             if (r && r.status === 200 && data.ok === true) {
               card.actions.hidden = true; // the buttons are replaced by the success line
               lockCard(card);
-              cardStatus(card, "good", "Thank you. The team will get back to you on weekdays.");
+              cardStatus(card, "good", "Received. Thank you! Your details have been sent to the " + businessName + " team.", successNote);
             } else if (r && r.status === 501) {
               lockCard(card);
               cardStatus(card, "bad", "Sending is not set up yet in this demo, so nothing was sent.");

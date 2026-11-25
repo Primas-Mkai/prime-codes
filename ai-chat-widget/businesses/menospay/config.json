@@ -12,6 +12,7 @@
   },
   "leadCapture": {
     "enabled": true,
-    "interests": ["Checkout", "Payouts", "Dashboard", "API", "Other"]
+    "interests": ["Checkout", "Payouts", "Dashboard", "API", "Other"],
+    "successNote": "This is a demo, so no reply will come."
   }
 }

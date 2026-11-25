@@ -17,7 +17,7 @@ const CONFIG = {
   greeting: "Hi! I'm the Menos Pay demo assistant. Ask me about payments, fees, or any fintech word you find confusing. (Menos Pay is a fictional demo company.)",
   buttonLabel: "Ask Menos Pay",
   theme: { primary: "#0F2A43", accent: "#1FB5A0", primaryText: "#FFFFFF", accentText: "#0F2A43" },
-  leadCapture: { enabled: true, interests: ["Checkout", "Payouts", "Dashboard", "API", "Other"] },
+  leadCapture: { enabled: true, interests: ["Checkout", "Payouts", "Dashboard", "API", "Other"], successNote: "This is a demo, so no reply will come." },
 };
 // A second business WITHOUT lead capture, to check the widget behaves exactly as before for it.
 const PLAIN_CONFIG = { name: "Plain Shop", assistantName: "Plain Shop assistant", greeting: "Hello!", buttonLabel: "Ask us anything", theme: CONFIG.theme };
@@ -29,6 +29,9 @@ function createMockServer(options = {}) {
   // stats exist for the tests only; the contents of a lead are never printed.
   const stats = { leadRequests: 0, chatRequests: 0, lastLeadBody: null, lastChatBody: null };
   const page = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  // options.successNote === false leaves the optional note out of the mocked config (for tests).
+  const config = { ...CONFIG, leadCapture: { ...CONFIG.leadCapture } };
+  if (options.successNote === false) delete config.leadCapture.successNote;
 
   function json(res, status, obj, headers = {}) {
     res.writeHead(status, { "Content-Type": "application/json", ...headers });
@@ -53,7 +56,7 @@ function createMockServer(options = {}) {
     }
     if (req.method === "GET" && route === "/api/config") {
       const id = url.searchParams.get("business");
-      if (id === "menospay") return json(res, 200, CONFIG);
+      if (id === "menospay") return json(res, 200, config);
       if (id === "plainshop") return json(res, 200, PLAIN_CONFIG);
       return json(res, 404, { error: "Unknown business." });
     }

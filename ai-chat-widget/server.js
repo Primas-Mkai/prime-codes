@@ -74,7 +74,10 @@ function getLeadConfig(config) {
   const lc = config && config.leadCapture;
   if (!lc || lc.enabled !== true || !Array.isArray(lc.interests)) return null;
   const interests = lc.interests.filter((i) => typeof i === "string" && i.trim()).map((i) => i.trim());
-  return interests.length ? { interests } : null;
+  if (!interests.length) return null;
+  // Optional short note the widget shows after a successful send: 1 to 120 characters once cleaned.
+  const note = typeof lc.successNote === "string" ? lc.successNote.replace(/[\u0000-\u001F\u007F-\u009F]/g, " ").replace(/ {2,}/g, " ").trim() : "";
+  return { interests, ...(note.length >= 1 && note.length <= 120 && { successNote: note }) };
 }
 
 function loadBusinesses() {
@@ -872,7 +875,10 @@ function buildPublicConfig(config) {
       .map((q) => q.slice(0, 120));
   }
   const lead = getLeadConfig(config);
-  if (lead) publicConfig.leadCapture = { enabled: true, interests: lead.interests };
+  if (lead) {
+    publicConfig.leadCapture = { enabled: true, interests: lead.interests };
+    if (lead.successNote) publicConfig.leadCapture.successNote = lead.successNote;
+  }
   return publicConfig;
 }
 
