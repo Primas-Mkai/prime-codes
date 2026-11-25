@@ -36,7 +36,7 @@
       return fetch(url, options).then(function (res) {
         return res.json().catch(function () { return {}; }).then(function (data) {
           clearTimeout(timer);
-          return { ok: res.ok, data: data };
+          return { ok: res.ok, status: res.status, data: data };
         });
       }, function (err) { clearTimeout(timer); throw err; });
     }
@@ -90,6 +90,22 @@
       ".input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary)}",
       ".send{width:46px;min-height:46px;height:46px;flex:none;border:0;border-radius:12px;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center}",
       ".send:disabled{opacity:.5;cursor:default}",
+      ".card{align-self:flex-start;width:92%;background:#fff;border:1px solid #D9D9D3;border-left:4px solid var(--accent);border-radius:12px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.08)}",
+      ".card.locked{opacity:.6}",
+      ".card-title{font-weight:700;font-size:14px;margin-bottom:6px}",
+      ".card-row{display:flex;gap:8px;font-size:14px;padding:3px 0}",
+      ".card-k{flex:none;width:72px;color:#6b6b66}",
+      ".card-v{flex:1;min-width:0;overflow-wrap:anywhere;white-space:pre-wrap}",
+      ".card-actions{display:flex;gap:8px;margin-top:10px}",
+      ".card-btn{flex:1;min-height:44px;padding:0 10px;border-radius:10px;border:1px solid var(--primary);font-weight:600}",
+      ".card-send{background:var(--primary);color:var(--primary-text)}",
+      ".card-edit{background:#fff;color:var(--primary)}",
+      ".card-btn:disabled{opacity:.5;cursor:default}",
+      ".card-btn:focus-visible{outline:3px solid var(--primary);outline-offset:2px}",
+      ".card-status{margin-top:8px;font-size:13px;overflow-wrap:anywhere}",
+      ".card-status:empty{display:none}",
+      ".card-status.bad{color:#8A1F11}.card-status.good{color:#0B6B3A}",
+      ".card-note{margin-top:8px;font-size:12px;color:#6b6b66}",
       "@media (min-width:900px){",
       ".launcher{right:24px;bottom:24px;padding:0 24px}",
       ".launcher .label{display:inline}",
@@ -100,9 +116,10 @@
       "@media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.6}}"
     ].join("\n");
 
-    var ICON_BUBBLE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>';
-    var ICON_CLOSE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-    var ICON_SEND = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+    // Icons are drawn from these path strings with createElementNS, so this file never writes HTML.
+    var ICON_BUBBLE = { size: 22, width: 1.8, d: "M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" };
+    var ICON_CLOSE = { size: 22, width: 2, d: "M6 6l12 12M18 6L6 18" };
+    var ICON_SEND = { size: 20, width: 2, d: "M5 12h14M13 6l6 6-6 6" };
 
     function el(tag, className, text) {
       var node = document.createElement(tag);
@@ -110,9 +127,20 @@
       if (text !== undefined) node.textContent = text;
       return node;
     }
-    function icon(markup, className) {
+    function svgIcon(spec) {
+      var ns = "http://www.w3.org/2000/svg";
+      var svg = document.createElementNS(ns, "svg");
+      var attrs = { width: spec.size, height: spec.size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+        "stroke-width": spec.width, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" };
+      Object.keys(attrs).forEach(function (k) { svg.setAttribute(k, attrs[k]); });
+      var path = document.createElementNS(ns, "path");
+      path.setAttribute("d", spec.d);
+      svg.appendChild(path);
+      return svg;
+    }
+    function icon(spec, className) {
       var span = el("span", className);
-      span.innerHTML = markup; // static markup written in this file only
+      span.appendChild(svgIcon(spec));
       return span;
     }
 
@@ -163,7 +191,7 @@
       var closeBtn = el("button", "close");
       closeBtn.type = "button";
       closeBtn.setAttribute("aria-label", "Close chat");
-      closeBtn.innerHTML = ICON_CLOSE;
+      closeBtn.appendChild(svgIcon(ICON_CLOSE));
       head.appendChild(avatar);
       head.appendChild(titles);
       head.appendChild(closeBtn);
@@ -182,7 +210,7 @@
       var send = el("button", "send");
       send.type = "submit";
       send.setAttribute("aria-label", "Send");
-      send.innerHTML = ICON_SEND;
+      send.appendChild(svgIcon(ICON_SEND));
       form.appendChild(input);
       form.appendChild(send);
 
@@ -200,6 +228,106 @@
         msgs.scrollTop = msgs.scrollHeight;
         return b;
       }
+      // ---------- lead confirm card (only for businesses with lead capture switched on) ----------
+      var leadEnabled = !!(cfg.leadCapture && cfg.leadCapture.enabled === true);
+      var businessName = typeof cfg.name === "string" && cfg.name.trim() ? cfg.name.trim() : "business";
+      var LEAD_FIELDS = [["name", "Name"], ["email", "Email"], ["phone", "Phone"], ["company", "Company"], ["interest", "Interest"], ["message", "Message"]];
+      var cards = [];
+
+      function setCardDisabled(card, disabled) {
+        card.send.disabled = disabled;
+        card.edit.disabled = disabled;
+      }
+      function lockCard(card) {
+        card.locked = true;
+        card.el.classList.add("locked");
+        setCardDisabled(card, true);
+      }
+      function cardStatus(card, kind, text) {
+        card.status.className = "card-status" + (kind ? " " + kind : "");
+        card.status.textContent = text;
+      }
+
+      function showLeadCard(lead) {
+        var rows = LEAD_FIELDS.filter(function (f) { return typeof lead[f[0]] === "string" && lead[f[0]].trim() !== ""; });
+        if (!rows.length) return;
+        cards.forEach(lockCard); // only the latest card can be used
+
+        var card = { lead: lead, busy: false, locked: false };
+        card.el = el("div", "card");
+        card.el.setAttribute("role", "group");
+        card.el.setAttribute("aria-label", "Check your details");
+        card.el.appendChild(el("div", "card-title", "Check your details"));
+        rows.forEach(function (f) {
+          var row = el("div", "card-row");
+          row.appendChild(el("span", "card-k", f[1]));
+          row.appendChild(el("span", "card-v", lead[f[0]]));
+          card.el.appendChild(row);
+        });
+
+        card.send = el("button", "card-btn card-send", "Send");
+        card.send.type = "button";
+        card.edit = el("button", "card-btn card-edit", "Edit");
+        card.edit.type = "button";
+        card.actions = el("div", "card-actions");
+        card.actions.appendChild(card.send);
+        card.actions.appendChild(card.edit);
+        card.el.appendChild(card.actions);
+        card.status = el("div", "card-status");
+        card.status.setAttribute("role", "status");
+        card.status.setAttribute("aria-live", "polite");
+        card.el.appendChild(card.status);
+        card.el.appendChild(el("div", "card-note", "Your details will be passed to the " + businessName + " team. Please do not share passwords or payment details."));
+
+        card.send.addEventListener("click", function () {
+          if (card.busy || card.locked) return; // a double click cannot send twice
+          card.busy = true;
+          setCardDisabled(card, true);
+          card.send.textContent = "Sending...";
+          cardStatus(card, "", "");
+          // The lead is posted exactly as the server sent it, not re-read from the screen.
+          fetchJson(api + "/api/lead", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ business: businessId, lead: card.lead, website: "" })
+          }, 30000).then(null, function () { return null; }).then(function (r) { // null = network error or timeout
+            card.busy = false;
+            card.send.textContent = "Send";
+            var data = r && r.data && typeof r.data === "object" ? r.data : {};
+            if (r && r.status === 200 && data.ok === true) {
+              card.actions.hidden = true; // the buttons are replaced by the success line
+              lockCard(card);
+              cardStatus(card, "good", "Thank you. The team will get back to you on weekdays.");
+            } else if (r && r.status === 501) {
+              lockCard(card);
+              cardStatus(card, "bad", "Sending is not set up yet in this demo, so nothing was sent.");
+            } else if (r && r.status === 429) {
+              if (!card.locked) card.send.disabled = false; // (a newer card may have locked this one meanwhile)
+              cardStatus(card, "bad", "Too many submissions right now. Please try again later.");
+            } else if (r && r.status === 400 && data.error === "invalid") {
+              if (!card.locked) card.edit.disabled = false; // the same details would fail again, so only Edit comes back
+              cardStatus(card, "bad", typeof data.field === "string" && typeof data.reason === "string"
+                ? "Please check the " + data.field + ": " + data.reason
+                : "Please check your details.");
+            } else {
+              if (!card.locked) setCardDisabled(card, false);
+              cardStatus(card, "bad", "Could not send your details. Please try again.");
+            }
+          });
+        });
+
+        card.edit.addEventListener("click", function () {
+          if (card.busy || card.locked) return;
+          lockCard(card);
+          addBubble("bot", "Sure. Tell me what to change and I will show the details again.");
+          input.focus();
+        });
+
+        cards.push(card);
+        msgs.appendChild(card.el);
+        msgs.scrollTop = msgs.scrollHeight; // scrolled into view like a new bubble; focus is not moved
+      }
+
       function showTyping() {
         var b = el("div", "b bot");
         b.setAttribute("role", "status");
@@ -248,6 +376,7 @@
           typing.remove();
           if (r.ok && typeof r.data.reply === "string") {
             addBubble("bot", r.data.reply);
+            if (leadEnabled && r.data.lead && typeof r.data.lead === "object" && !Array.isArray(r.data.lead)) showLeadCard(r.data.lead);
             history.push({ role: "user", content: text }, { role: "assistant", content: r.data.reply });
             history = history.slice(-10);
           } else {
